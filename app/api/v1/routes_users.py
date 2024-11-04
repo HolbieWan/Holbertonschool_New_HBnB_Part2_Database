@@ -2,6 +2,7 @@
 
 from flask import Blueprint, current_app, request, abort
 from flask_restx import Api, Namespace, Resource, fields
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from email_validator import EmailNotValidError
 
 from app.api.v1.routes_places import place_model, place_creation_model
@@ -29,7 +30,7 @@ user_creation_model = api.model('User_creation', {
     'last_name': fields.String(required=True, description='Last name', example='Rocker'),
     'email': fields.String(required=True, description='Email address', example='johnny.rocker@gmail.com'),
     'password' : fields.String(required=True, description="Password", example='mypassword'),
-    'is_admin': fields.Boolean(required=True, description='Admin rights', example='false'),
+    # 'is_admin': fields.Boolean(required=True, description='Admin rights', example='false'),
 })
 
 user_update_model = api.model('User_update', {
@@ -55,11 +56,29 @@ get_all_places_success_model = api.model('GetAllPlaces', {
 })), required=False, description='List of reviews for the place', example=[{}]),
 })
 
+auth_header = {
+    'Authorization': {
+        'description': 'Bearer <JWT Token>',
+        'in': 'header',
+        'type': 'string',
+        'required': True
+    }
+}
 
-# @api.route('/home')
-# class Home(Resource):
-#     def get(self):
-#         return "Welcome to the homepage"
+@api.route('/home')
+class Home(Resource):
+    @api.doc('home', params=auth_header)
+    @jwt_required()
+    def get(self):
+        """A protected home endpoint to wellcome a loged user"""
+        facade = current_app.extensions['HBNB_FACADE']
+
+        current_user = get_jwt_identity()
+        current_user_id = current_user["id"]
+        current_user = facade.user_facade.get_user(current_user_id)
+        current_user_first_name = current_user["first_name"]
+        current_user_last_name = current_user["last_name"]
+        return {"message": f"Hello {current_user_first_name} {current_user_last_name}"}, 200
     
  #   <------------------------------------------------------------------------>
 
@@ -76,19 +95,8 @@ class UserList(Resource):
         try:
             new_user = facade.user_facade.create_user(user_data)
 
-            user_response = {
-            "type": new_user["type"],
-            "id": new_user["id"],
-            "first_name": new_user["first_name"],
-            "last_name": new_user["last_name"],
-            "email": new_user["email"],
-            "password": "****",
-            "is_admin": new_user["is_admin"],
-            "places" : [""],
-            "created_at": "",
-            "updated_at": ""
-            }
-            return user_response, 201
+            new_user["password"] = "****"
+            return new_user, 201
 
         except ValueError as e:
             abort(400, str(e))
@@ -104,6 +112,10 @@ class UserList(Resource):
             users = facade.user_facade.get_all_users()
             if not users:
                 raise ValueError("No user found")
+        
+            for user in users:
+                user["password"] = "****"
+
             return users, 200
 
         except ValueError as e:
@@ -122,6 +134,8 @@ class UserResource(Resource):
 
         try:
             user = facade.user_facade.get_user(user_id)
+            user["password"] = "****"
+
             return user, 200
         
         except ValueError as e:
@@ -138,6 +152,8 @@ class UserResource(Resource):
 
         try:
             updated_user = facade.user_facade.update_user(user_id, updated_data)
+            updated_user["password"] = "****"
+
             return updated_user, 200
         
         except ValueError as e:

@@ -11,25 +11,26 @@ class UserFacade():
     def create_user(self, user_data):
         print(f"Creating user with data: {user_data}")
 
-        user = User(
+        new_user = User(
             first_name=user_data["first_name"], 
             last_name=user_data["last_name"],
             email=user_data["email"],
             password=user_data["password"],
-            is_admin=user_data["is_admin"]
+            is_admin=False
         )
+        new_user.hash_password(user_data["password"])
 
-        existing_user = self.user_repo.get_by_attribute("email", user.email)
+        existing_user = self.user_repo.get_by_attribute("email", new_user.email)
         
         if existing_user:
-            raise ValueError(f"User with email: {user.email} already exists.")
+            raise ValueError(f"User with email: {new_user.email} already exists.")
 
-        if not user.is_valid():
+        if not new_user.is_valid():
             raise ValueError("User validation failed. Please check the email and other attributes.")
 
-        print(f"User {user.first_name} {user.last_name} passed validation.")
-        self.user_repo.add(user)
-        return user.to_dict()
+        print(f"User {new_user.first_name} {new_user.last_name} passed validation.")
+        self.user_repo.add(new_user)
+        return new_user.to_dict()
 
     #   <------------------------------------------------------------------------>
 
@@ -42,8 +43,15 @@ class UserFacade():
         
     #   <------------------------------------------------------------------------>
 
-    def get_user_by_attribute(self, attr):
-        pass
+    def get_user_by_email(self, email):
+        users = self.user_repo.get_by_attribute("email", email)
+
+        if not users:
+            raise ValueError("User not found")
+        if len(users) > 1:
+            raise ValueError("Multiple users found with the same email")
+        
+        return users[0] 
 
     #   <------------------------------------------------------------------------>
 

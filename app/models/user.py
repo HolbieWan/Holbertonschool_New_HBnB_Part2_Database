@@ -1,6 +1,6 @@
 from app.models.base_model import BaseModel
 from email_validator import validate_email, EmailNotValidError
-
+from app.extensions import bcrypt
 
 class User(BaseModel):
     def __init__(self, first_name, last_name, email, password, is_admin=False):
@@ -11,6 +11,14 @@ class User(BaseModel):
         self.password = password
         self.is_admin = is_admin
         self.places = []
+
+    def hash_password(self, password):
+        """Hashes the password before storing it."""
+        self.password = bcrypt.generate_password_hash(password).decode('utf-8')
+
+    def verify_password(self, password):
+        """Verifies if the provided password matches the hashed password."""
+        return bcrypt.check_password_hash(self.password, password)
 
     def add_place(self, place):
         self.places.append(place)    

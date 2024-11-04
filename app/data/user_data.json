@@ -1,1 +1,14 @@
-{}
+{
+    "05ef4516-82bf-4abc-b8b5-e91e58e70430": {
+        "type": "user",
+        "id": "05ef4516-82bf-4abc-b8b5-e91e58e70430",
+        "first_name": "Johnny",
+        "last_name": "Rocker",
+        "email": "johnny.rocker@gmail.com",
+        "password": "$2b$12$X.1OmOsezvfhdijK6oMtU./DuOjSGQZS.r5DRmt7w0wUKbgF.b3ie",
+        "is_admin": false,
+        "places": [],
+        "created_at": "2024-11-04T12:24:49.808750",
+        "updated_at": "2024-11-04T12:24:49.808756"
+    }
+}
