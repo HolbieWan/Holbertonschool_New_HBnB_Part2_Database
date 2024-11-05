@@ -1,3 +1,5 @@
+# facade_user.py
+
 from app.models.user import User
 from email_validator import EmailNotValidError
 
@@ -44,14 +46,12 @@ class UserFacade():
     #   <------------------------------------------------------------------------>
 
     def get_user_by_email(self, email):
-        users = self.user_repo.get_by_attribute("email", email)
+        user = self.user_repo.get_by_attribute("email", email)
 
-        if not users:
+        if not user:
             raise ValueError("User not found")
-        if len(users) > 1:
-            raise ValueError("Multiple users found with the same email")
         
-        return users[0] 
+        return user
 
     #   <------------------------------------------------------------------------>
 

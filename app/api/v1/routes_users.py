@@ -2,7 +2,7 @@
 
 from flask import Blueprint, current_app, request, abort
 from flask_restx import Api, Namespace, Resource, fields
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity # type: ignore
 from email_validator import EmailNotValidError
 
 from app.api.v1.routes_places import place_model, place_creation_model
@@ -195,7 +195,12 @@ class UserPlaceDetails(Resource):
     @api.marshal_with(place_model, code=201) # type: ignore
     def post(self, user_id):
         """Create a new place for a user"""
-        facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+        repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+        if repo_type == 'in_DB':
+            facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
+        else:
+            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+
         new_place_data = request.get_json()
 
         new_place_data["amenities"] = []

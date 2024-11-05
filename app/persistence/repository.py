@@ -1,12 +1,17 @@
+# repository.py
+
 import sys
 import os
 import json
 
 from datetime import datetime
+
 from app.models.user import User
 from app.models.place import Place
 from app.models.review import Review
 from app.models.amenity import Amenity
+
+from app.extensions import db
 
 from abc import ABC, abstractmethod
 
@@ -36,6 +41,7 @@ class Repository(ABC):
     def get_by_attribute(self, attr_name, attr_value):
         pass
 
+# <--------------------------------------------------------->
 
 class InMemoryRepository(Repository):
     def __init__(self):
@@ -62,6 +68,7 @@ class InMemoryRepository(Repository):
     def get_by_attribute(self, attr_name, attr_value):
         return [obj for obj in self._storage.values() if getattr(obj, attr_name) == attr_value]
     
+# <--------------------------------------------------------->
 
 class InFileRepository(InMemoryRepository):
 
@@ -174,3 +181,36 @@ class InFileRepository(InMemoryRepository):
         if obj_id in self._storage:
             del self._storage[obj_id]
             self.save_to_file()
+
+# <--------------------------------------------------------->
+
+class SQLAlchemyRepository(Repository):
+    def __init__(self, model):
+        self.model = model
+
+    def add(self, obj):
+        db.session.add(obj)
+        db.session.commit()
+
+    def get(self, obj_id):
+        return self.model.query.get(obj_id)
+
+    def get_all(self):
+        return self.model.query.all()
+
+    def update(self, obj_id, data):
+        obj = self.get(obj_id)
+        if obj:
+            for key, value in data.items():
+                setattr(obj, key, value)
+            obj.save()
+            db.session.commit()
+
+    def delete(self, obj_id):
+        obj = self.get(obj_id)
+        if obj:
+            db.session.delete(obj)
+            db.session.commit()
+
+    def get_by_attribute(self, attr_name, attr_value):
+        return self.model.query.filter_by(**{attr_name: attr_value}).all()

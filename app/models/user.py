@@ -1,8 +1,20 @@
+# user.py
 from app.models.base_model import BaseModel
 from email_validator import validate_email, EmailNotValidError
-from app.extensions import bcrypt
+from app.extensions import bcrypt, db
+
 
 class User(BaseModel):
+    __tablename__ = 'users'
+
+    first_name = db.Column(db.String(50), nullable=False)
+    last_name = db.Column(db.String(50), nullable=False)
+    email = db.Column(db.String(120), nullable=False, unique=True)
+    password = db.Column(db.String(128), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
+
+    places = db.relationship('Place', back_populates='owner', lazy=True)
+
     def __init__(self, first_name, last_name, email, password, is_admin=False):
         super().__init__()
         self.first_name = first_name
@@ -10,7 +22,7 @@ class User(BaseModel):
         self.email = email
         self.password = password
         self.is_admin = is_admin
-        self.places = []
+        self.places = [] 
 
     def hash_password(self, password):
         """Hashes the password before storing it."""

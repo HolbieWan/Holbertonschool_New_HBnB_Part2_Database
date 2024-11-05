@@ -1,6 +1,6 @@
 from flask import Blueprint, current_app, request, abort
 from flask_restx import Namespace, Resource, fields
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token # type: ignore
 
 login_bp = Blueprint('login', __name__)
 api = Namespace('auth', description='Authentication operations')
