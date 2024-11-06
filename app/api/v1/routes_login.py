@@ -22,8 +22,9 @@ class Login(Resource):
         try:
             user = facade.user_facade.get_user_by_email(credentials["email"])
 
-            if not user or not user.verify_password(credentials["password"]):
-                raise ValueError("Error: invalid credentials")
+            for user in user:
+                if not user or not user.verify_password(credentials["password"]):
+                    raise ValueError("Error: invalid credentials")
 
             access_token = create_access_token(identity={'id': str(user.id), 'is_admin': user.is_admin})
 

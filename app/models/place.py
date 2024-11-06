@@ -1,3 +1,4 @@
+# place.py
 from app.models.base_model import BaseModel
 from app.extensions import db
 
@@ -11,16 +12,10 @@ class Place(BaseModel):
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
     owner_first_name = db.Column(db.String(50), nullable=False)
-    
-    # Foreign key linking to the User model
     owner_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
-
-    # Reviews and amenities can be JSON, depending on how you want to handle them
     reviews = db.Column(db.JSON, default=[])
     amenities = db.Column(db.JSON, default=[])
 
-    # Establish the relationship with User using back_populates
-    owner = db.relationship('User', back_populates='places')
 
     def __init__(self, title, description, price, latitude, longitude, owner_id, owner_first_name, amenities=None, reviews=None):
         super().__init__()

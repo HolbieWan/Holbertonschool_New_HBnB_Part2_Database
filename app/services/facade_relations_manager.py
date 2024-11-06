@@ -1,4 +1,5 @@
 # facade_relation_manager.py
+from app.persistence.repository import SQLAlchemyRepository
 
 class FacadeRelationManager:
     def __init__(self, user_facade, place_facade, amenity_facade, review_facade):
@@ -11,8 +12,9 @@ class FacadeRelationManager:
 # <------------------------------------------------------------------------>
 
     def create_place_for_user(self, user_id, place_data):
+        print("Using FacadeRelationManager to create place for user")
         user = self.user_facade.user_repo.get(user_id)
-       
+        
         if not user:
             raise ValueError(f"User with id {user_id} not found.")
 
@@ -20,34 +22,38 @@ class FacadeRelationManager:
         place_data['amenities'] = []
         place_data['reviews'] = []
         place_data['owner_first_name'] = user.first_name
-        place_data['owner_id'] = user.id
 
         place = self.place_facade.create_place(place_data)
-        user.places.append(place['id'])
+
+        if isinstance(self.user_facade.user_repo, SQLAlchemyRepository):
+            user.places.append(place)
+        else:
+            user.places.append(place['id'])
+
         self.user_facade.user_repo.update(user_id, user.to_dict())
 
         return place
     
         # <------------------------------------------>
 
-    def get_all_places_dict_from_user_place_id_list(self, user_id):
-        user = self.user_facade.user_repo.get(user_id)
+    # def get_all_places_dict_from_user_place_id_list(self, user_id):
+    #     user = self.user_facade.user_repo.get(user_id)
 
-        if not user:
-            raise ValueError(f"User with id: {user_id} not found")
+    #     if not user:
+    #         raise ValueError(f"User with id: {user_id} not found")
         
-        places_id_list = user.places
+    #     places_id_list = user.places
        
-        places_dict_list = []
+    #     places_dict_list = []
 
-        for place_id in places_id_list:
-            place = self.place_facade.place_repo.get(place_id)
-            places_dict_list.append(place.to_dict())
+    #     for place_id in places_id_list:
+    #         place = self.place_facade.place_repo.get(place_id)
+    #         places_dict_list.append(place.to_dict())
 
-        if not places_dict_list:
-            raise ValueError(f"No place found for this user: {user_id}")
+    #     if not places_dict_list:
+    #         raise ValueError(f"No place found for this user: {user_id}")
     
-        return places_dict_list
+    #     return places_dict_list
 
     # <------------------------------------------>
     

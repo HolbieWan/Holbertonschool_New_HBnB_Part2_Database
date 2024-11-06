@@ -130,14 +130,18 @@ class PlaceUserOwnerDetails(Resource):
     def delete(self, place_id):
         """Delete a place in place repo and user repo"""
         facade = current_app.extensions['HBNB_FACADE']
-        facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+        repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+        if repo_type == 'in_DB':
+            facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
+        else:
+            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
 
         try:
             place = facade.place_facade.get_place(place_id)
             user_id = place.get("owner_id")
             facade_relation_manager.delete_place_from_owner_place_list(place_id, user_id)
 
-            return (f"Place: {place_id} has been deleted")
+            return (f"Place: {place_id} has been deleted from user_place_list and place repo")
 
         except ValueError as e:
             abort(400, str(e))
@@ -154,7 +158,11 @@ class AmenityPlaceList(Resource):
     @api.marshal_with(amenity_model) # type: ignore
     def post(self, place_id):
         """Add an amenity to a place"""
-        facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+        repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+        if repo_type == 'in_DB':
+            facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
+        else:
+            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
 
         try:
             amenity_data = request.get_json()
@@ -192,8 +200,12 @@ class AmenityPlaceDelete(Resource):
     @api.doc('get_all_amenity_names_for_a_place')
     def delete(self, place_id, amenity_name):
         """Delete an amenity from place list"""
-        facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
         facade = current_app.extensions['HBNB_FACADE']
+        repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+        if repo_type == 'in_DB':
+            facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
+        else:
+            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
 
         try:
             place = facade.place_facade.get_place(place_id)
@@ -224,8 +236,13 @@ class ReviewPlaceUser(Resource):
     @api.marshal_with(review_model) # type: ignore
     def post(self, place_id, user_id):
         """Create a review for a place"""
-        facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
-        new_review= request.get_json()
+        repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+        if repo_type == 'in_DB':
+            facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
+        else:
+            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+
+        new_review = request.get_json()
         
         try:
             review = facade_relation_manager.create_review_for_place(place_id, user_id, new_review)
@@ -267,7 +284,11 @@ class AmenityReviewDelete(Resource):
     @api.doc('delete_a_review_from_a_place')
     def delete(self, place_id, review_id):
         """Delete a review from a place"""
-        facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+        repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+        if repo_type == 'in_DB':
+            facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
+        else:
+            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
 
         try:
             facade_relation_manager.delete_review_from_place_list(review_id, place_id)
