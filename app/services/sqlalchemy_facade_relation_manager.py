@@ -107,11 +107,9 @@ class SQLAlchemyFacadeRelationManager:
 
             if not user:
                 raise ValueError(f"User with id: {user_id} not found")
-            
-            user_places_ids = user.places
 
-            if place_id in user_places_ids:
-                user_places_ids = [upld for upld in user_places_ids if upld != place_id]
+            if place_id in user.places:
+                user.places = [pid for pid in user.places if pid != place_id]
                 db.session.add(user)
                 db.session.commit()
             else:

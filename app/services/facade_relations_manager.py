@@ -311,7 +311,7 @@ class FacadeRelationManager:
             raise ValueError("This user does not exist")
 
         if not reviews:
-            raise ValueError("No user found in review repo")
+            raise ValueError("No review found in review repo")
         
         user_reviews_list = []
 
