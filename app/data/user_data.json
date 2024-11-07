@@ -20,9 +20,10 @@
         "password": "$2b$12$xIxeZLoT4aBAALEJV5jwZ.0QTZ2hPgqSy7GFsf8dgj/vMFVekSEJ6",
         "is_admin": false,
         "places": [
-            "3418c227-153b-47cd-b3e6-9a6f2af1d2ca"
+            "3418c227-153b-47cd-b3e6-9a6f2af1d2ca",
+            "aaaf3af5-9c72-45d8-9732-31b3b87c6809"
         ],
         "created_at": "2024-11-06T10:29:09.939755",
-        "updated_at": "2024-11-06T09:30:13.643278"
+        "updated_at": "2024-11-06T18:04:36.980875"
     }
 }

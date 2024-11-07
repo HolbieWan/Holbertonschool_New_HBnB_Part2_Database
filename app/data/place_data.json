@@ -58,5 +58,24 @@
         "amenities": [],
         "created_at": "2024-11-06T10:30:13.642696",
         "updated_at": "2024-11-06T10:30:13.642704"
+    },
+    "aaaf3af5-9c72-45d8-9732-31b3b87c6809": {
+        "type": "place",
+        "id": "aaaf3af5-9c72-45d8-9732-31b3b87c6809",
+        "title": "Chez Johnny Man",
+        "description": "The rocker place",
+        "price": 150.5,
+        "latitude": 23.2356,
+        "longitude": 54.4577,
+        "owner_first_name": "Johnny 3",
+        "owner_id": "f886d13b-039a-432d-9902-dedc67a97d4d",
+        "reviews": [
+            "3a95a9dd-e25f-4845-82a4-268079046015"
+        ],
+        "amenities": [
+            "Jacuzzi"
+        ],
+        "created_at": "2024-11-06T19:04:36.979817",
+        "updated_at": "2024-11-06T18:06:32.400302"
     }
 }

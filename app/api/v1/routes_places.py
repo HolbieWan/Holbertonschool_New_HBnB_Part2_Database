@@ -111,7 +111,11 @@ class PlaceResource(Resource):
     @api.doc('delete_place')
     def delete(self, place_id):
         """Delete a place and associated instances"""
-        facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+        repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+        if repo_type == 'in_DB':
+            facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
+        else:
+            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
         
         try:
             facade_relation_manager.delete_place_and_associated_instances(place_id)

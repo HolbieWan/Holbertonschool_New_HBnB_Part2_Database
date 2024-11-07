@@ -27,18 +27,16 @@ class SQLAlchemyFacadeRelationManager:
         place_data['owner_first_name'] = user.first_name
 
         place = self.place_facade.create_place(place_data)
-        place_id = place['id']  # Retrieve the new place's ID
+        place_id = place['id']
 
-        # Ensure user.places is initialized
         if user.places is None:
             user.places = []
 
-        # Append only if the place_id is not already in the list
         if place_id not in user.places:
-            user.places = user.places + [place_id]  # Reassign with a new list including the new place ID
+            user.places = user.places + [place_id] 
 
         print(f"user.places before commit: {user.places}")
-        db.session.add(user)  # Mark as modified for SQLAlchemy
+        db.session.add(user)
         db.session.commit()
 
         print(f"user.places after commit: {user.places}")
@@ -74,6 +72,65 @@ class SQLAlchemyFacadeRelationManager:
 
 #       <---------------------------------------------------------->
 
+    def delete_user_and_associated_instances(self, user_id):
+        try:
+            user = self.user_facade.user_repo.get(user_id)
+
+            if not user:
+                raise ValueError(f"User with id: {user_id} not found")
+            
+            places_ids_list = user.places
+            if places_ids_list:
+                for place_id in places_ids_list:
+                    self.delete_place_and_associated_instances(place_id)
+            
+            else:
+                raise ValueError(f"No corresponding place found for this user")
+            
+        except ValueError as e:
+            print(f"Une erreur est survenue : {str(e)}")
+
+        finally:
+            self.user_facade.user_repo.delete(user_id)
+
+        # <------------------------------------------>
+
+    def delete_place_and_associated_instances(self, place_id):
+        try:
+            place = self.place_facade.place_repo.get(place_id)
+
+            if not place:
+                raise ValueError(f"User with id: {place_id} not found")
+
+            user_id = place.owner_id
+            user = self.user_facade.user_repo.get(user_id)
+
+            if not user:
+                raise ValueError(f"User with id: {user_id} not found")
+            
+            user_places_ids = user.places
+
+            if place_id in user_places_ids:
+                user_places_ids = [upld for upld in user_places_ids if upld != place_id]
+                db.session.add(user)
+                db.session.commit()
+            else:
+                raise ValueError(f"Place ID {place_id} not found in user's places list.")
+
+            reviews_ids_list = place.reviews
+            if reviews_ids_list:
+                for review_id in reviews_ids_list:
+                    self.review_facade.review_repo.delete(review_id)
+            else:
+                raise ValueError(f"No corresponding review found for this place.")
+            
+        except ValueError as e:
+            print(f"Une erreur est survenue : {str(e)}")
+
+        finally:
+            self.place_facade.place_repo.delete(place_id)
+
+
  #  Place - Amenity relations
  # <------------------------------------------------------------------------>
 
@@ -86,10 +143,8 @@ class SQLAlchemyFacadeRelationManager:
             raise ValueError(f"Place: {place_id} not found.")
 
         if not amenity_data["name"] in place.amenities:
-            # place.amenities.append(amenity_data['name'])
             place.amenities = place.amenities + [amenity_data["name"]]
             print(f"place.amenities before commit: {place.amenities}")
-            # self.place_facade.place_repo.update(place_id, place.to_dict())
             db.session.add(place)
             db.session.commit()
             print(f"Amenity: {amenity_data['name']} has been added to the place: {place_id}")
