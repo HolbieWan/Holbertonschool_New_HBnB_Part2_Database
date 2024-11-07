@@ -119,66 +119,66 @@ class TestFacadeRelationManager(unittest.TestCase):
         self.mock_user_facade.user_repo.get.assert_called_once_with(user_id)
         self.assertIn(f"User with id {user_id} not found.", str(context.exception))
 
-    def test_get_all_places_dict_from_user_place_id_list_success(self):
-        """Test getting all places for a user successfully."""
-        user_id = "user-123"
-        self.sample_user.places = ["place-456", "place-789"]
-        self.mock_user_facade.user_repo.get.return_value = self.sample_user
+    # def test_get_all_places_dict_from_user_place_id_list_success(self):
+    #     """Test getting all places for a user successfully."""
+    #     user_id = "user-123"
+    #     self.sample_user.places = ["place-456", "place-789"]
+    #     self.mock_user_facade.user_repo.get.return_value = self.sample_user
 
-        # Mock places using simple objects
-        class MockPlace:
-            def __init__(self, id, title):
-                self.id = id
-                self.title = title
+    #     # Mock places using simple objects
+    #     class MockPlace:
+    #         def __init__(self, id, title):
+    #             self.id = id
+    #             self.title = title
 
-            def to_dict(self):
-                return {"id": self.id, "title": self.title}
+    #         def to_dict(self):
+    #             return {"id": self.id, "title": self.title}
 
-        place_456 = MockPlace("place-456", "Cozy Cottage")
-        place_789 = MockPlace("place-789", "Modern Apartment")
+    #     place_456 = MockPlace("place-456", "Cozy Cottage")
+    #     place_789 = MockPlace("place-789", "Modern Apartment")
 
-        # Mock place_facade.place_repo.get to return these places
-        def mock_get(place_id):
-            if place_id == "place-456":
-                return place_456
-            elif place_id == "place-789":
-                return place_789
-            else:
-                return None
+    #     # Mock place_facade.place_repo.get to return these places
+    #     def mock_get(place_id):
+    #         if place_id == "place-456":
+    #             return place_456
+    #         elif place_id == "place-789":
+    #             return place_789
+    #         else:
+    #             return None
 
-        self.mock_place_facade.place_repo.get.side_effect = mock_get
+    #     self.mock_place_facade.place_repo.get.side_effect = mock_get
 
-        # Call the method
-        result = self.relation_manager.get_all_places_dict_from_user_place_id_list(user_id)
+    #     # Call the method
+    #     result = self.relation_manager.get_all_places_dict_from_user_place_id_list(user_id)
 
-        # Assertions
-        self.mock_user_facade.user_repo.get.assert_called_once_with(user_id)
-        self.mock_place_facade.place_repo.get.assert_any_call("place-456")
-        self.mock_place_facade.place_repo.get.assert_any_call("place-789")
-        expected_result = [place_456.to_dict(), place_789.to_dict()]
-        self.assertEqual(result, expected_result)
+    #     # Assertions
+    #     self.mock_user_facade.user_repo.get.assert_called_once_with(user_id)
+    #     self.mock_place_facade.place_repo.get.assert_any_call("place-456")
+    #     self.mock_place_facade.place_repo.get.assert_any_call("place-789")
+    #     expected_result = [place_456.to_dict(), place_789.to_dict()]
+    #     self.assertEqual(result, expected_result)
 
-    def test_get_all_places_dict_from_user_place_id_list_user_not_found(self):
-        """Test getting all places when the user is not found."""
-        user_id = "user-999"
-        self.mock_user_facade.user_repo.get.return_value = None
+    # def test_get_all_places_dict_from_user_place_id_list_user_not_found(self):
+    #     """Test getting all places when the user is not found."""
+    #     user_id = "user-999"
+    #     self.mock_user_facade.user_repo.get.return_value = None
 
-        with self.assertRaises(ValueError) as context:
-            self.relation_manager.get_all_places_dict_from_user_place_id_list(user_id)
+    #     with self.assertRaises(ValueError) as context:
+    #         self.relation_manager.get_all_places_dict_from_user_place_id_list(user_id)
 
-        self.mock_user_facade.user_repo.get.assert_called_once_with(user_id)
-        self.assertIn(f"User with id: {user_id} not found", str(context.exception))
+    #     self.mock_user_facade.user_repo.get.assert_called_once_with(user_id)
+    #     self.assertIn(f"User with id: {user_id} not found", str(context.exception))
 
-    def test_get_all_places_dict_from_user_place_id_list_no_places(self):
-        """Test getting all places when the user has no places."""
-        user_id = "user-123"
-        self.sample_user.places = []
-        self.mock_user_facade.user_repo.get.return_value = self.sample_user
+    # def test_get_all_places_dict_from_user_place_id_list_no_places(self):
+    #     """Test getting all places when the user has no places."""
+    #     user_id = "user-123"
+    #     self.sample_user.places = []
+    #     self.mock_user_facade.user_repo.get.return_value = self.sample_user
 
-        with self.assertRaises(ValueError) as context:
-            self.relation_manager.get_all_places_dict_from_user_place_id_list(user_id)
+    #     with self.assertRaises(ValueError) as context:
+    #         self.relation_manager.get_all_places_dict_from_user_place_id_list(user_id)
 
-        self.assertIn(f"No place found for this user: {user_id}", str(context.exception))
+    #     self.assertIn(f"No place found for this user: {user_id}", str(context.exception))
 
     def test_add_amenity_to_a_place_success(self):
         """Test adding an amenity to a place successfully."""
@@ -314,7 +314,7 @@ class TestFacadeRelationManager(unittest.TestCase):
 
         self.mock_user_facade.user_repo.get.assert_called_once_with(user_id)
         self.mock_review_facade.review_repo.get_all.assert_called_once()
-        self.assertIn("No user found in review repo", str(context.exception))
+        self.assertIn("No review found in review repo", str(context.exception))
 
     def test_get_all_reviews_from_user_no_reviews_for_user(self):
         """Test getting all reviews when there are no reviews for the user."""

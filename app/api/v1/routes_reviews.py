@@ -26,6 +26,11 @@ review_creation_model = api.model('Review_creation', {
     'user_first_name': fields.String(required=False, description='First_name of the reviewer ', example='Johnny'),
 })
 
+review_update_model = api.model('Review_update', {
+    'text': fields.String(required=True, description='Text of the review', example='Very nice !'),
+    'rating': fields.Integer(required=True, description='Rating from the user for this place', example='4')
+})
+
 @api.route('/')
 class ReviewList(Resource):
     @api.doc('create_review')
@@ -82,7 +87,7 @@ class ReviewResource(Resource):
 
 
     @api.doc('update_review')
-    @api.expect(review_creation_model)
+    @api.expect(review_update_model)
     @api.marshal_with(review_model)
     def put(self, review_id):
         """Update a review"""

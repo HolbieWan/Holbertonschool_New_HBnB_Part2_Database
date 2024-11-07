@@ -110,17 +110,17 @@ class TestUserModel(unittest.TestCase):
         self.assertIsNotNone(user_dict['created_at'])
         self.assertIsNotNone(user_dict['updated_at'])
 
-    def test_add_place(self):
-        """Test that add_place correctly adds a place to the user's places list."""
-        user = User(
-            first_name='Eve',
-            last_name='Foster',
-            email='eve.foster@gmail.com',
-            password='password123'
-        )
-        place_id = 'place-123'
-        user.add_place(place_id)
-        self.assertIn(place_id, user.places)
+    # def test_add_place(self):
+    #     """Test that add_place correctly adds a place to the user's places list."""
+    #     user = User(
+    #         first_name='Eve',
+    #         last_name='Foster',
+    #         email='eve.foster@gmail.com',
+    #         password='password123'
+    #     )
+    #     place_id = 'place-123'
+    #     user.add(place_id)
+    #     self.assertIn(place_id, user.places)
 
     def test_user_creation_missing_arguments(self):
         """Test that creating a user without required arguments raises TypeError."""

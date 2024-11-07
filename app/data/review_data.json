@@ -1,14 +1,1 @@
-{
-    "3a95a9dd-e25f-4845-82a4-268079046015": {
-        "type": "review",
-        "id": "3a95a9dd-e25f-4845-82a4-268079046015",
-        "text": "Great place for a relaxing time",
-        "rating": 4,
-        "place_id": "aaaf3af5-9c72-45d8-9732-31b3b87c6809",
-        "place_name": "Chez Johnny Man",
-        "user_id": "5c320931-51ae-460f-8156-e9ca04fe2c89",
-        "user_first_name": "Johnny",
-        "created_at": "2024-11-06T19:06:32.399179",
-        "updated_at": "2024-11-06T19:06:32.399225"
-    }
-}
+{}

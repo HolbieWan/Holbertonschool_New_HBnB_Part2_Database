@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 from flask import json
+from datetime import datetime
 
 from app.tests.tests_endpoints.base_test import BaseTestCase
 
@@ -31,9 +32,9 @@ class TestUserEndpoints(BaseTestCase):
         self.assertEqual(data['email'], 'test.user@example.com')
         self.assertEqual(data['password'], '****')  # Password should be masked
         self.assertEqual(data['is_admin'], False)
-        self.assertEqual(data['places'], [""])
-        self.assertEqual(data['created_at'], "")
-        self.assertEqual(data['updated_at'], "")
+        self.assertEqual(data['places'], ["place-456"])
+        self.assertEqual(data['created_at'], "2022-01-01T00:00:00")
+        self.assertEqual(data['updated_at'], "2022-01-01T00:00:00")
 
     def test_create_user_invalid_data(self):
         """Test creating a user with invalid data."""
