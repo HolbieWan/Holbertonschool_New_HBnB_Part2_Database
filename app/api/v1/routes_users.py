@@ -1,4 +1,35 @@
-# routes_users.py
+"""
+routes_users.py
+
+This module defines Flask routes for user-related operations, including user
+creation, updating, deletion, and retrieval. It also manages associated user
+resources, such as places and reviews, through endpoints to create and
+retrieve these related entities.
+
+Classes:
+    Home (Resource): A protected endpoint welcoming a logged-in user.
+    UserList (Resource): Manages the creation and listing of users.
+    UserResource (Resource): Manages retrieval, updating, and deletion of a
+        specific user by ID.
+    UserPlaceDetails (Resource): Manages creation and retrieval of places
+        associated with a specific user.
+    UserReviewDetails (Resource): Retrieves reviews associated with a user.
+
+Attributes:
+    users_bp (Blueprint): Flask blueprint for user routes.
+    api (Namespace): Namespace for user-related API endpoints.
+    user_model (model): Model schema for User responses.
+    user_creation_model (model): Model schema for creating a User.
+    user_update_model (model): Model schema for updating a User.
+    get_all_places_success_model (model): Model schema for listing places.
+
+Models:
+    auth_header (dict): Authorization header specification for JWT.
+    user_model (model): API model representing user attributes.
+    user_creation_model (model): API model for user creation payload.
+    user_update_model (model): API model for updating a user's details.
+    get_all_places_success_model (model): API model for listing user's places.
+"""
 
 from flask import Blueprint, current_app, request, abort
 from flask_restx import Api, Namespace, Resource, fields
@@ -67,10 +98,11 @@ auth_header = {
 
 @api.route('/home')
 class Home(Resource):
+    """A protected endpoint that welcomes a logged-in user."""
     @api.doc('home', params=auth_header)
     @jwt_required()
     def get(self):
-        """A protected home endpoint to wellcome a loged user"""
+        """Returns a personalized welcome message for the logged-in user."""
         facade = current_app.extensions['HBNB_FACADE']
 
         current_user = get_jwt_identity()
@@ -84,11 +116,20 @@ class Home(Resource):
 
 @api.route('/')
 class UserList(Resource):
+    """Resource for creating a new user and listing all users."""
     @api.doc('create_user')
     @api.expect(user_creation_model)
     @api.marshal_with(user_model, code=201) # type: ignore
     def post(self):
-        """Create a new user"""
+        """
+        Creates a new user.
+
+        Expects:
+            JSON payload with user details, excluding `is_admin`.
+
+        Returns:
+            JSON representation of the created user with password masked.
+        """
         facade = current_app.extensions['HBNB_FACADE']
         user_data = request.get_json()
 
@@ -105,7 +146,12 @@ class UserList(Resource):
     @api.doc('list_users')
     @api.marshal_list_with(user_model)
     def get(self):
-        """Get all users"""
+        """
+        Retrieves all users in the system.
+
+        Returns:
+            List of user dictionaries with masked passwords.
+        """
         facade = current_app.extensions['HBNB_FACADE']
 
         try:
@@ -126,10 +172,19 @@ class UserList(Resource):
 @api.route('/<string:user_id>')
 @api.param('user_id', 'The User identifier')
 class UserResource(Resource):
+    """Resource for retrieving, updating, or deleting a specific user by ID."""
     @api.doc('get_user')
     @api.marshal_with(user_model)
     def get(self, user_id):
-        """Get a user by ID"""
+        """
+        Retrieves a user by their unique ID.
+
+        Args:
+            user_id (str): The unique identifier of the user.
+
+        Returns:
+            JSON representation of the user with password masked.
+        """
         facade = current_app.extensions['HBNB_FACADE']
 
         try:
@@ -146,7 +201,15 @@ class UserResource(Resource):
     @api.expect(user_update_model)
     @api.marshal_with(user_model)
     def put(self, user_id):
-        """Update a user"""
+        """
+        Updates an existing user.
+
+        Args:
+            user_id (str): The unique identifier of the user.
+
+        Returns:
+            JSON representation of the updated user with masked password.
+        """
         facade = current_app.extensions['HBNB_FACADE']
         updated_data = request.get_json()
 
@@ -175,7 +238,15 @@ class UserResource(Resource):
 
     @api.doc('delete_user')
     def delete(self, user_id):
-        """Delete a user and associated instances"""
+        """
+        Deletes a user along with all associated instances.
+
+        Args:
+            user_id (str): The unique identifier of the user.
+
+        Returns:
+            Success message if deletion is successful.
+        """
         repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
         if repo_type == 'in_DB':
             facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
@@ -194,11 +265,20 @@ class UserResource(Resource):
 @api.route('/<string:user_id>/place')
 @api.param('user_id', 'The User identifier')
 class UserPlaceDetails(Resource):
+    """Resource for creating a place for a user or retrieving places by user."""
     @api.doc('create_place')
     @api.expect(place_creation_model)
     @api.marshal_with(place_model, code=201) # type: ignore
     def post(self, user_id):
-        """Create a new place for a user"""
+        """
+        Creates a new place associated with a user.
+
+        Args:
+            user_id (str): The unique identifier of the user.
+
+        Returns:
+            JSON representation of the created place.
+        """
         repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
         if repo_type == 'in_DB':
             facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
@@ -221,7 +301,15 @@ class UserPlaceDetails(Resource):
     @api.doc('get_places_by_user_id')
     @api.marshal_with(get_all_places_success_model, code=200) # type: ignore
     def get(self, user_id):
-        """Get all places from the user_id"""
+        """
+        Retrieves all places associated with a user.
+
+        Args:
+            user_id (str): The unique identifier of the user.
+
+        Returns:
+            List of places associated with the user.
+        """
         facade = current_app.extensions['HBNB_FACADE']
 
         try:
@@ -240,10 +328,19 @@ class UserPlaceDetails(Resource):
 @api.route('/<string:user_id>/reviews')
 @api.param('user_id', 'The User identifier')
 class UserReviewDetails(Resource):
+    """Resource for retrieving all reviews associated with a specific user."""
     @api.doc('Get_all_reviews_from_a_user')
     @api.marshal_with(review_model, code=201) # type: ignore
     def get(self, user_id):
-        """Get all reviews from a user """
+        """
+        Retrieves all reviews associated with a user.
+
+        Args:
+            user_id (str): The unique identifier of the user.
+
+        Returns:
+            List of reviews for the specified user.
+        """
         facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
 
         try:

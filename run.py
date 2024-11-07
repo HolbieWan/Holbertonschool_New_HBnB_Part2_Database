@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+"""
+Entry point for the application.
+This script initializes the Flask app, sets up the database,
+and runs the server.
+"""
+
 from app import create_app
 from app.extensions import db
 

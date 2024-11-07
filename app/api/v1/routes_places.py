@@ -1,4 +1,38 @@
-from flask import Blueprint, current_app, jsonify, request, abort
+"""
+routes_places.py
+
+This module defines Flask routes for place-related operations, such as creating,
+retrieving, updating, and deleting places. It also includes routes for managing
+related resources, like amenities and reviews associated with each place.
+
+Classes:
+    PlaceList (Resource): Manages retrieval of all places.
+    PlaceResource (Resource): Handles retrieval, updating, and deletion of a
+        specific place.
+    PlaceUserOwnerDetails (Resource): Deletes a place from both place and user
+        repositories.
+    AmenityPlaceList (Resource): Manages amenities associated with a specific
+        place.
+    AmenityPlaceDelete (Resource): Deletes a specific amenity from a place.
+    ReviewPlaceUser (Resource): Adds a review for a place by a specific user.
+    ReviewPlaceList (Resource): Retrieves all reviews associated with a specific
+        place.
+    AmenityReviewDelete (Resource): Deletes a specific review from a place.
+    PlaceAmenityName (Resource): Retrieves all places that contain a specified
+        amenity.
+
+Attributes:
+    places_bp (Blueprint): Flask blueprint for place routes.
+    api (Namespace): Namespace for place-related API endpoints.
+    place_model (model): Model schema for Place responses.
+    place_creation_model (model): Model schema for creating a Place.
+    get_amenities_model (model): Model schema for retrieving amenities.
+    add_review_model (model): Model schema for creating a review for a place.
+    get_all_reviews_success_model (model): Model schema for retrieving all
+        reviews of a place.
+"""
+
+from flask import Blueprint, current_app, request, abort
 from flask_restx import api, Namespace, Resource, fields
 
 from app.api.v1.routes_reviews import review_model
@@ -56,17 +90,24 @@ get_all_reviews_success_model = api.model('GetAllReviews', {
 
 @api.route('/')
 class PlaceList(Resource):
+    """Resource for retrieving all places."""
+
     @api.doc('get_all_places')
     @api.marshal_list_with(place_model)
     def get(self):
-        """Get all places"""
+        """
+        Retrieves all places.
+
+        Returns:
+            JSON array of all places, with place attributes.
+        """
         facade = current_app.extensions['HBNB_FACADE']
 
         try:
             places = facade.place_facade.get_all_places()
             if not places:
                 raise ValueError(f"No place found")
-            
+
             return places, 200
 
         except ValueError as e:
@@ -74,65 +115,104 @@ class PlaceList(Resource):
 
  #   <------------------------------------------------------------------------>
 
+
 @api.route('/<string:place_id>')
 @api.param('place_id', 'The place identifier')
 class PlaceResource(Resource):
+    """Resource for retrieving, updating, or deleting a specific place by ID."""
+
     @api.doc('get_place')
     @api.marshal_with(place_model)
     def get(self, place_id):
-        """Get a place by id"""
+        """
+        Retrieves a specific place by its ID.
+
+        Args:
+            place_id (str): The unique identifier of the place.
+
+        Returns:
+            JSON object with the place's details.
+        """
         facade = current_app.extensions['HBNB_FACADE']
 
         try:
             place = facade.place_facade.get_place(place_id)
 
             return place, 200
-        
+
         except ValueError as e:
             abort(404, str(e))
-    
+
     @api.doc('update_place')
     @api.expect(place_creation_model)
     @api.marshal_with(place_model)
     def put(self, place_id):
-        """Update a place by id"""
+        """
+        Updates an existing place.
+
+        Args:
+            place_id (str): The unique identifier of the place.
+
+        Returns:
+            JSON object with the updated place's details.
+        """
         facade = current_app.extensions['HBNB_FACADE']
         updated_data = request.get_json()
 
         try:
-            updated_place = facade.place_facade.update_place(place_id, updated_data)
+            updated_place = facade.place_facade.update_place(
+                place_id, updated_data)
 
             return updated_place, 200
-        
+
         except ValueError as e:
             abort(400, str(e))
 
-    
     @api.doc('delete_place')
     def delete(self, place_id):
-        """Delete a place and associated instances"""
+        """
+        Deletes a place and its associated instances.
+
+        Args:
+            place_id (str): The unique identifier of the place.
+
+        Returns:
+            Success message if deletion is successful.
+        """
         repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
         if repo_type == 'in_DB':
             facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
         else:
             facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
-        
+
         try:
-            facade_relation_manager.delete_place_and_associated_instances(place_id)
+            facade_relation_manager.delete_place_and_associated_instances(
+                place_id)
 
             return {"message": f"Place: {place_id} has been deleted"}, 200
-        
+
         except ValueError as e:
             abort(400, str(e))
 
  #   <------------------------------------------------------------------------>
 
+
 @api.route('/<string:place_id>/user')
 @api.param('place_id')
 class PlaceUserOwnerDetails(Resource):
+    """Resource for deleting a place from both the place repository and the associated user repository. """
+
     @api.doc('delete_place_in_place_repo_and_user_repo')
     def delete(self, place_id):
-        """Delete a place in place repo and user repo"""
+        """
+        Deletes a place from both the place repository and the associated user.
+
+        Args:
+            place_id (str): The unique identifier of the place.
+
+        Returns:
+            Success message indicating the place was removed from both repositories.
+        """
         facade = current_app.extensions['HBNB_FACADE']
         repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
         if repo_type == 'in_DB':
@@ -143,25 +223,35 @@ class PlaceUserOwnerDetails(Resource):
         try:
             place = facade.place_facade.get_place(place_id)
             user_id = place.get("owner_id")
-            facade_relation_manager.delete_place_from_owner_place_list(place_id, user_id)
+            facade_relation_manager.delete_place_from_owner_place_list(
+                place_id, user_id)
 
-            return (f"Place: {place_id} has been deleted from user_place_list and place repo")
+            return (
+                f"Place: {place_id} has been deleted from user_place_list and place repo")
 
         except ValueError as e:
             abort(400, str(e))
 
-
  #   <------------------------------------------------------------------------>
-
 
 @api.route('/<string:place_id>/amenities')
 @api.param('place_id', 'The place identifier')
 class AmenityPlaceList(Resource):
+    """Resource for managing amenities associated with a specific place."""
+
     @api.doc('add_amenity_to_a_place')
     @api.expect(amenity_creation_model)
-    @api.marshal_with(amenity_model) # type: ignore
+    @api.marshal_with(amenity_model)  # type: ignore
     def post(self, place_id):
-        """Add an amenity to a place"""
+        """
+        Adds a new amenity to the specified place.
+
+        Args:
+            place_id (str): The unique identifier of the place.
+
+        Returns:
+            JSON representation of the newly added amenity.
+        """
         repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
         if repo_type == 'in_DB':
             facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
@@ -170,22 +260,31 @@ class AmenityPlaceList(Resource):
 
         try:
             amenity_data = request.get_json()
-            amenities = facade_relation_manager.add_amenity_to_a_place(place_id, amenity_data)
+            amenities = facade_relation_manager.add_amenity_to_a_place(
+                place_id, amenity_data)
 
             return amenities, 201
 
         except ValueError as e:
             abort(400, str(e))
 
-
     @api.doc('get_all_amenity_names_for_a_place')
-    @api.marshal_with(get_amenities_model) # type: ignore
+    @api.marshal_with(get_amenities_model)  # type: ignore
     def get(self, place_id):
-        """Get all amenity names for a place"""
+        """
+        Retrieves all amenity names associated with a specific place.
+
+        Args:
+            place_id (str): The unique identifier of the place.
+
+        Returns:
+            JSON object with a list of amenity names.
+        """
         facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
 
         try:
-            amenities = facade_relation_manager.get_all_amenities_names_from_place(place_id)
+            amenities = facade_relation_manager.get_all_amenities_names_from_place(
+                place_id)
             amenities_response = {
                 "place_id": place_id,
                 "place_amenities": amenities
@@ -195,15 +294,25 @@ class AmenityPlaceList(Resource):
 
         except ValueError as e:
             abort(400, str(e))
-    
+
 
 @api.route('/<string:place_id>/amenities/<string:amenity_name>')
 @api.param('place_id', 'The place identifier')
 @api.param('amenity_name', 'The amenity name to delete')
 class AmenityPlaceDelete(Resource):
+    """Resource for deleting a specific amenity from a place."""
     @api.doc('get_all_amenity_names_for_a_place')
     def delete(self, place_id, amenity_name):
-        """Delete an amenity from place list"""
+        """
+        Deletes a specific amenity from a place.
+
+        Args:
+            place_id (str): The unique identifier of the place.
+            amenity_name (str): The name of the amenity to remove.
+
+        Returns:
+            Success message indicating the amenity was removed from the place.
+        """
         facade = current_app.extensions['HBNB_FACADE']
         repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
         if repo_type == 'in_DB':
@@ -219,27 +328,42 @@ class AmenityPlaceDelete(Resource):
 
         if amenity_name in place["amenities"]:
             try:
-                facade_relation_manager.delete_amenity_from_place_list(amenity_name, place_id)
+                facade_relation_manager.delete_amenity_from_place_list(
+                    amenity_name, place_id)
 
-                return {"message": f"Amenity: {amenity_name} has been deleted from the place_amenities list"}, 200
-            
+                return {
+                    "message": f"Amenity: {amenity_name} has been deleted from the place_amenities list"}, 200
+
             except ValueError as e:
                 abort(400, str(e))
 
         else:
-            return {"message": f"Amenity: {amenity_name} not found in the place_amenities list"}, 400
-    
+            return {
+                "message": f"Amenity: {amenity_name} not found in the place_amenities list"}, 400
+
  #   <------------------------------------------------------------------------>
+
 
 @api.route('/<string:place_id>/reviews/<string:user_id>')
 @api.param('place_id', 'The place identifier')
 @api.param('user_id', 'The reviewer identifier')
 class ReviewPlaceUser(Resource):
+    """Resource for adding a review to a place by a specific user."""
+
     @api.doc('add_review_to_a_place')
     @api.expect(add_review_model)
-    @api.marshal_with(review_model) # type: ignore
+    @api.marshal_with(review_model)  # type: ignore
     def post(self, place_id, user_id):
-        """Create a review for a place"""
+        """
+        Adds a review for a place by a specific user.
+
+        Args:
+            place_id (str): The unique identifier of the place.
+            user_id (str): The unique identifier of the user submitting the review.
+
+        Returns:
+            JSON representation of the newly added review.
+        """
         repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
         if repo_type == 'in_DB':
             facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
@@ -247,47 +371,72 @@ class ReviewPlaceUser(Resource):
             facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
 
         new_review = request.get_json()
-        
+
         try:
-            review = facade_relation_manager.create_review_for_place(place_id, user_id, new_review)
+            review = facade_relation_manager.create_review_for_place(
+                place_id, user_id, new_review)
 
             return review, 201
-        
+
         except ValueError as e:
             abort(400, str(e))
 
  #   <------------------------------------------------------------------------>
+
 
 @api.route('/<place_id>/reviews')
 @api.param('place_id', 'The place identifier')
 @api.param('user_id', 'The reviewer identifier')
 class ReviewPlaceList(Resource):
+    """Resource for retrieving all reviews associated with a specific place."""
+
     @api.doc('get_all_reviews_for_a_place')
     @api.marshal_with(get_all_reviews_success_model)
     def get(self, place_id):
-        """Get all reviews for a place"""
+        """
+        Retrieves all reviews associated with a specific place.
+
+        Args:
+            place_id (str): The unique identifier of the place.
+
+        Returns:
+            JSON object containing a list of reviews for the place.
+        """
         facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
 
         try:
-            reviews_list = facade_relation_manager.get_all_reviews_dict_from_place_reviews_id_list(place_id)
+            reviews_list = facade_relation_manager.get_all_reviews_dict_from_place_reviews_id_list(
+                place_id)
             reviews_response = {
                 "reviews": reviews_list
             }
 
             return reviews_response, 200
-        
+
         except ValueError as e:
             abort(400, str(e))
 
  #   <------------------------------------------------------------------------>
 
+
 @api.route('/<string:place_id>/review/<string:review_id>')
 @api.param('place_id', 'The place identifier')
 @api.param('review_id', 'The review to delete from the place')
 class AmenityReviewDelete(Resource):
+    """Resource for deleting a specific review from a place."""
+
     @api.doc('delete_a_review_from_a_place')
     def delete(self, place_id, review_id):
-        """Delete a review from a place"""
+        """
+        Deletes a specific review from a place.
+
+        Args:
+            place_id (str): The unique identifier of the place.
+            review_id (str): The unique identifier of the review to delete.
+
+        Returns:
+            Success message indicating the review was removed from the place.
+        """
         repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
         if repo_type == 'in_DB':
             facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
@@ -295,27 +444,41 @@ class AmenityReviewDelete(Resource):
             facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
 
         try:
-            facade_relation_manager.delete_review_from_place_list(review_id, place_id)
+            facade_relation_manager.delete_review_from_place_list(
+                review_id, place_id)
 
-            return {"message": f"Review: {review_id} has been deleted from the place_reviews list"}, 200
-        
+            return {
+                "message": f"Review: {review_id} has been deleted from the place_reviews list"}, 200
+
         except ValueError as e:
             abort(400, str(e))
 
  #   <------------------------------------------------------------------------>
 
+
 @api.route('/amenity/<string:amenity_name>')
 @api.param('amenity_name', 'The name of the amenity')
 class PlaceAmenityName(Resource):
+    """Resource for retrieving all places that contain a specified amenity."""
+
     @api.doc('get_all_places_with_specifique_amenity')
     @api.marshal_list_with(place_model)
     def get(self, amenity_name):
-        """Get all places with this amenity """
+        """
+        Retrieves all places that include a specified amenity.
+
+        Args:
+            amenity_name (str): The name of the amenity to filter places by.
+
+        Returns:
+            JSON array of places containing the specified amenity.
+        """
         facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
 
         try:
-            amenities = facade_relation_manager.get_all_places_with_specifique_amenity(amenity_name)
-            
+            amenities = facade_relation_manager.get_all_places_with_specifique_amenity(
+                amenity_name)
+
             return amenities, 200
 
         except ValueError as e:
