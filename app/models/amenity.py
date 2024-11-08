@@ -44,19 +44,16 @@ class Amenity(BaseModel):
 
             stripped_name = self.name.strip()
 
-            if len(stripped_name) == 0 or len(stripped_name) > 50:
-                raise ValueError(
-                    "Name must not be empty and less than 50 characters.")
-
-            return True
+            if not ( 0 < len(stripped_name) < 50):
+                raise ValueError("Name must not be empty and less than 50 characters.")
 
         except TypeError as te:
-            print(f"Type error: {str(te)}")
-            return False
-
+            raise ValueError(f"{str(te)}")
+        
         except ValueError as ve:
-            print(f"Value error: {str(ve)}")
-            return False
+            raise ValueError(f"{str(ve)}")
+        
+        return True
 
     def to_dict(self):
         """

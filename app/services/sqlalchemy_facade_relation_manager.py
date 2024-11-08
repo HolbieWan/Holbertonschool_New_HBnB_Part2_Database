@@ -35,12 +35,7 @@ class SQLAlchemyFacadeRelationManager:
         review_facade (ReviewFacade): Facade for review-related operations.
     """
 
-    def __init__(
-            self,
-            user_facade,
-            place_facade,
-            amenity_facade,
-            review_facade):
+    def __init__(self, user_facade, place_facade, amenity_facade, review_facade):
         """
         Initialize SQLAlchemyFacadeRelationManager with the provided facades.
 
@@ -119,21 +114,17 @@ class SQLAlchemyFacadeRelationManager:
         try:
             user = self.user_facade.user_repo.get(user_id)
 
-            print(f"user.places before removal: {user.places}")
-
             if not user:
                 raise ValueError(f"User with id: {user_id} not found")
 
             if place_id in user.places:
                 user.places = [pid for pid in user.places if pid != place_id]
-                print(f"user.places before removal: {user.places}")
 
                 db.session.add(user)
                 db.session.commit()
 
             else:
-                raise ValueError(
-                    f"Place ID {place_id} not found in user's places list.")
+                raise ValueError(f"Place ID {place_id} not found in user's places list.")
 
             self.place_facade.place_repo.delete(place_id)
 
@@ -163,15 +154,13 @@ class SQLAlchemyFacadeRelationManager:
             if places_ids_list:
                 for place_id in places_ids_list:
                     self.delete_place_and_associated_instances(place_id)
-
-            else:
-                raise ValueError(f"No place found for this user")
+            
+            self.user_facade.user_repo.delete(user_id)
 
         except ValueError as e:
             print(f"Une erreur est survenue : {str(e)}")
+            raise
 
-        finally:
-            self.user_facade.user_repo.delete(user_id)
 
         # <------------------------------------------>
 
@@ -212,15 +201,13 @@ class SQLAlchemyFacadeRelationManager:
             if reviews_ids_list:
                 for review_id in reviews_ids_list:
                     self.review_facade.review_repo.delete(review_id)
-            else:
-                raise ValueError(
-                    f"No corresponding review found for this place.")
+            
+            self.place_facade.place_repo.delete(place_id)
 
         except ValueError as e:
             print(f"Une erreur est survenue : {str(e)}")
+            raise
 
-        finally:
-            self.place_facade.place_repo.delete(place_id)
 
 #  Place - Amenity relations
 # <------------------------------------------------------------------------>
@@ -243,8 +230,7 @@ class SQLAlchemyFacadeRelationManager:
 
         amenity_name = amenity_data["name"]
 
-        amenity = self.amenity_facade.amenity_repo.get_by_attribute(
-            "name", amenity_name)
+        amenity = self.amenity_facade.amenity_repo.get_by_attribute("name", amenity_name)
 
         if not place:
             raise ValueError(f"Place: {place_id} not found.")
@@ -252,21 +238,16 @@ class SQLAlchemyFacadeRelationManager:
         if not amenity_data["name"] in place.amenities:
             place.amenities = place.amenities + [amenity_data["name"]]
 
-            print(f"place.amenities before commit: {place.amenities}")
             db.session.add(place)
             db.session.commit()
 
-            print(
-                f"Amenity: {amenity_data['name']} has been added "
-                "to the place: {place_id}")
+            print(f"Amenity: {amenity_data['name']} has been added to the place: {place_id}")
 
             if not amenity:
                 amenity = self.amenity_facade.create_amenity(amenity_data)
 
         else:
-            raise ValueError(
-                f"Amenity: {amenity_data['name']} already exist "
-                "for this place: {place_id}")
+            raise ValueError(f"Amenity: {amenity_data['name']} already exist for this place: {place_id}")
 
         return amenity
 
@@ -289,18 +270,13 @@ class SQLAlchemyFacadeRelationManager:
             raise ValueError(f"Place with id: {place_id} not found")
 
         if amenity_name in place.amenities:
-            place.amenities = [
-                amty_name for amty_name in place.amenities
-                if amty_name != amenity_name]
+            place.amenities = [amty_name for amty_name in place.amenities if amty_name != amenity_name]
 
-            print(f"place.amenities before commit: {place.amenities}")
             db.session.add(place)
             db.session.commit()
-            print(f"place.amenities after commit: {place.amenities}")
 
         else:
-            raise ValueError(
-                f"Amenity {amenity_name} not found in places_amenities list.")
+            raise ValueError(f"Amenity {amenity_name} not found in places_amenities list.")
 
 
 # #  Place - review relations
@@ -344,10 +320,8 @@ class SQLAlchemyFacadeRelationManager:
         if review_id not in place.reviews:
             place.reviews = place.reviews + [review_id]
 
-        print(f"place.reviews before commit: {place.reviews}")
         db.session.add(place)
         db.session.commit()
-        print(f"place.reviews after commit: {place.reviews}")
 
         return review
 
@@ -372,13 +346,10 @@ class SQLAlchemyFacadeRelationManager:
         reviews = place.reviews
 
         if review_id in reviews:
-            place.reviews = [
-                rev_id for rev_id in reviews if rev_id != review_id]
+            place.reviews = [rev_id for rev_id in reviews if rev_id != review_id]
 
-            print(f"place.reviews before commit: {place.reviews}")
             db.session.add(place)
             db.session.commit()
-            print(f"place.reviews after commit: {place.reviews}")
 
         else:
             raise ValueError(f"Review with id: {review_id} not found")

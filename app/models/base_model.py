@@ -20,16 +20,9 @@ class BaseModel(db.Model):
     """
     __abstract__ = True
 
-    id = db.Column(
-        db.String(36),
-        primary_key=True,
-        default=lambda: str(
-            uuid.uuid4()))
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(
-        db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __init__(self):
         """Initialize a new instance with a unique ID and timestamps."""
@@ -71,15 +64,9 @@ class BaseModel(db.Model):
               for in-file storage.
         """
         for key, value in data.items():
-            if hasattr(
-                    self,
-                    key) and key not in [
-                    'id',
-                    'created_at',
-                    'updated_at']:
+            if hasattr(self, key) and key not in ['id', 'created_at', 'updated_at']:
                 setattr(self, key, value)
-            elif key in ['created_at', 'updated_at'] \
-                    and isinstance(value, str):
+            elif key in ['created_at', 'updated_at'] and isinstance(value, str):
                 setattr(self, key, datetime.fromisoformat(value))
 
         self.save(repo_type)

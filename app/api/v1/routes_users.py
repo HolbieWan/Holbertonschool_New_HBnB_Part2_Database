@@ -87,8 +87,7 @@ get_all_places_success_model = api.model('GetAllPlaces', {
 })), required=False, description='List of reviews for the place', example=[{}]),
 })
 
-auth_header = {
-    'Authorization': {
+auth_header = {'Authorization': {
         'description': 'Bearer <JWT Token>',
         'in': 'header',
         'type': 'string',
@@ -99,6 +98,7 @@ auth_header = {
 @api.route('/home')
 class Home(Resource):
     """A protected endpoint that welcomes a logged-in user."""
+
     @api.doc('home', params=auth_header)
     @jwt_required()
     def get(self):
@@ -110,6 +110,7 @@ class Home(Resource):
         current_user = facade.user_facade.get_user(current_user_id)
         current_user_first_name = current_user["first_name"]
         current_user_last_name = current_user["last_name"]
+
         return {"message": f"Hello {current_user_first_name} {current_user_last_name}"}, 200
     
  #   <------------------------------------------------------------------------>
@@ -117,6 +118,7 @@ class Home(Resource):
 @api.route('/')
 class UserList(Resource):
     """Resource for creating a new user and listing all users."""
+
     @api.doc('create_user')
     @api.expect(user_creation_model)
     @api.marshal_with(user_model, code=201) # type: ignore
@@ -135,8 +137,8 @@ class UserList(Resource):
 
         try:
             new_user = facade.user_facade.create_user(user_data)
-
             new_user["password"] = "****"
+
             return new_user, 201
 
         except ValueError as e:
@@ -156,6 +158,7 @@ class UserList(Resource):
 
         try:
             users = facade.user_facade.get_all_users()
+
             if not users:
                 raise ValueError("No user found")
         
@@ -173,6 +176,7 @@ class UserList(Resource):
 @api.param('user_id', 'The User identifier')
 class UserResource(Resource):
     """Resource for retrieving, updating, or deleting a specific user by ID."""
+
     @api.doc('get_user')
     @api.marshal_with(user_model)
     def get(self, user_id):
@@ -248,6 +252,7 @@ class UserResource(Resource):
             Success message if deletion is successful.
         """
         repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+
         if repo_type == 'in_DB':
             facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
         else:
@@ -266,6 +271,7 @@ class UserResource(Resource):
 @api.param('user_id', 'The User identifier')
 class UserPlaceDetails(Resource):
     """Resource for creating a place for a user or retrieving places by user."""
+    
     @api.doc('create_place')
     @api.expect(place_creation_model)
     @api.marshal_with(place_model, code=201) # type: ignore
@@ -280,6 +286,7 @@ class UserPlaceDetails(Resource):
             JSON representation of the created place.
         """
         repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+
         if repo_type == 'in_DB':
             facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
         else:
@@ -292,6 +299,7 @@ class UserPlaceDetails(Resource):
 
         try:
             place = facade_relation_manager.create_place_for_user(user_id, new_place_data)
+
             return place, 201
 
         except ValueError as e:
@@ -314,6 +322,7 @@ class UserPlaceDetails(Resource):
 
         try:
             places = facade.place_facade.get_all_places_from_owner_id(user_id)
+
             places_response = {
                 "places": places
             }
@@ -345,6 +354,7 @@ class UserReviewDetails(Resource):
 
         try:
             reviews = facade_relation_manager.get_all_reviews_from_user(user_id)
+            
             return reviews, 201
 
         except ValueError as e:

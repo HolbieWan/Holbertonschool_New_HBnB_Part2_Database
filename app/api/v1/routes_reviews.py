@@ -170,7 +170,6 @@ class ReviewResource(Resource):
         facade = current_app.extensions['HBNB_FACADE']
 
         try:
-            review = facade.review_facade.get_review(review_id)
             facade.review_facade.delete_review(review_id)
 
             return (f"Review: {review_id} has been deleted.")

@@ -58,17 +58,14 @@ class PlaceFacade():
         existing_place = self.place_repo.get_by_attribute("title", place.title)
 
         if existing_place:
-            print(
-                f"Place: {place.title} already exists."
-                "Please choose another title for your place")
-            raise ValueError(
-                f"Place '{place.title}' already exists. "
-                "Please choose another title.")
+            raise ValueError(f"Place '{place.title}' already exists. Please choose another title.")
 
         if place.is_valid():
             print(f"User {place.title} passed validation.")
             self.place_repo.add(place)
+
             return place.to_dict()
+        
         else:
             print(f"Place: {place.title} failed validation.")
             raise ValueError("Invalid place data.")
@@ -92,6 +89,7 @@ class PlaceFacade():
 
         if place:
             return place.to_dict()
+        
         else:
             raise ValueError(f"Place with id {place_id} not found.")
 
@@ -130,6 +128,31 @@ class PlaceFacade():
             ValueError: If the place is not found.
         """
         place = self.place_repo.get(place_id)
+
+        if not place:
+            raise ValueError(f"Place with id {place_id} not found.")
+        
+        new_place_title = new_data["title"]
+        
+        existing_place_title = self.place_repo.get_by_attribute("title", new_place_title)
+
+        if existing_place_title and new_place_title != place.title:
+            raise ValueError(f"Place with title: {new_place_title} already exists, choose another one.")
+
+        new_place = Place(
+            title=new_data["title"],
+            description=new_data["description"],
+            price=new_data["price"],
+            latitude=new_data["latitude"],
+            longitude=new_data["longitude"],
+            owner_first_name=place.owner_first_name,
+            owner_id=place.owner_id,
+            amenities=place.amenities,
+            reviews=place.reviews
+        )
+
+        if not new_place.is_valid():
+            raise ValueError("Place validation failed. Please check the email and other attributes.")
 
         if place:
             self.place_repo.update(place_id, new_data)
@@ -177,5 +200,6 @@ class PlaceFacade():
 
         if places:
             return [place.to_dict() for place in places]
+        
         else:
             raise ValueError(f"No place found for owner_id: {owner_id}")

@@ -32,14 +32,7 @@ class User(BaseModel):
     is_admin = db.Column(db.Boolean, default=False)
     places = db.Column(db.JSON, default=[])
 
-    def __init__(
-            self,
-            first_name,
-            last_name,
-            email,
-            password,
-            is_admin=False,
-            places=None):
+    def __init__(self, first_name, last_name, email, password, is_admin=False, places=None):
         """Initialize a new user instance."""
         super().__init__()
         self.first_name = first_name
@@ -78,35 +71,28 @@ class User(BaseModel):
             bool: True if validation passes, otherwise raises ValueError.
         """
         try:
-            if not all(
-                isinstance(
-                    attr,
-                    str) for attr in [
-                    self.email,
-                    self.first_name,
-                    self.last_name,
-                    self.password]):
-                raise TypeError(
-                    "email, password, first_name, \
-                    and last_name must be strings.")
+            if not all(isinstance(attr, str) for attr in [self.email, self.first_name, self.last_name, self.password]):
+                raise TypeError("email, password, first_name, and last_name must be strings.")
 
-            if not (
-                0 < len(
-                    self.first_name) <= 50) or not (
-                0 < len(
-                    self.last_name) <= 50):
-                raise ValueError(
-                    "first_name and last_name must not be empty \
-                    and should be less than 50 characters.")
+            if not (0 < len(self.first_name) <= 50):
+                raise ValueError("first_name must not be empty and should be less than 50 characters.")
+                
+            if not (0 < len(self.last_name) <= 50):
+                raise ValueError("last_name must not be empty and should be less than 50 characters.")
 
+            if not (0 < len(self.email) <= 50):
+                raise ValueError("email must not be empty and should be less than 50 characters.")
+            
             validate_email(self.email)
 
         except TypeError as te:
-            raise ValueError(f"Type error: {str(te)}")
+            raise ValueError(f"{str(te)}")
+        
         except EmailNotValidError as e:
             raise ValueError(f"Email validation failed: {str(e)}")
+        
         except ValueError as ve:
-            raise ValueError(f"Value error: {str(ve)}")
+            raise ValueError(f"{str(ve)}")
 
         return True
 

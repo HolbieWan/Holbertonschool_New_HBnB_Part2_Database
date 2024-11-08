@@ -28,14 +28,7 @@ class Review(BaseModel):
     user_id = db.Column(db.String(50), nullable=False)
     user_first_name = db.Column(db.String(50), nullable=False)
 
-    def __init__(
-            self,
-            text,
-            rating,
-            place_id,
-            place_name,
-            user_id,
-            user_first_name):
+    def __init__(self, text, rating, place_id, place_name, user_id, user_first_name):
         """
         Initialize a Review instance.
 
@@ -68,8 +61,8 @@ class Review(BaseModel):
                         or if any fields are empty.
         """
         try:
-            if not isinstance(self.text, str):
-                raise TypeError("text must be strings (str).")
+            if not all(isinstance(attr, str) for attr in [self.text, self.place_id, self.place_name, self.user_id, self.user_first_name]):
+                raise TypeError("text, place_id, place_name, user_id, user_first_name must be strings.")
 
             if not isinstance(self.rating, int):
                 raise TypeError("rating must be an integer (int).")
@@ -77,20 +70,28 @@ class Review(BaseModel):
             if self.rating < 1 or self.rating > 5:
                 raise ValueError("rating must be between 1 and 5.")
 
-            if self.text == "" or self.place_name == "" \
-                    or self.place_id == "" or self.user_id == "" \
-                    or self.user_first_name == "":
-                raise ValueError("Fields can not be empty !")
-
-            return True
+            if not (0 < len(self.text) <= 50):
+                raise ValueError("text must not be empty and should be less than 50 characters.")
+            
+            if not (0 < len(self.place_name) <= 50):
+                raise ValueError("place_name must not be empty and should be less than 50 characters.")
+            
+            if not (0 < len(self.place_id) <= 50):
+                raise ValueError("place_id must not be empty and should be less than 50 characters.")
+            
+            if not (0 < len(self.user_id) <= 50):
+                raise ValueError("user_id must not be empty and should be less than 50 characters.")
+            
+            if not (0 < len(self.user_first_name) <= 50):
+                raise ValueError("user_first_name must not be empty and should be less than 50 characters.")
 
         except TypeError as te:
-            print(f"Type error: {str(te)}")
-            return False
-
+            raise ValueError(f"{str(te)}")
+        
         except ValueError as ve:
-            print(f"Value error: {str(ve)}")
-            return False
+            raise ValueError(f"{str(ve)}")
+        
+        return True
 
     def to_dict(self):
         """

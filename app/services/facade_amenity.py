@@ -44,18 +44,12 @@ class AmenityFacade():
 
         amenity = Amenity(
             name=amenity_data["name"]
-        )
+            )
 
-        existing_amenity = self.amenity_repo.get_by_attribute(
-            "name", amenity.name)
+        existing_amenity = self.amenity_repo.get_by_attribute("name", amenity.name)
 
         if existing_amenity:
-            print(
-                f"Amenity: {amenity.name} already exists in amenity repo. "
-                "Please choose another name for your amenity")
-            raise ValueError(
-                f"Amenity '{amenity.name}' already exists. "
-                "Please choose another name.")
+            raise ValueError(f"Amenity '{amenity.name}' already exists. Please choose another name.")
 
         if amenity.is_valid():
             print(f"Amenity {amenity.name} passed validation.")
@@ -123,6 +117,16 @@ class AmenityFacade():
             ValueError: If the amenity is not found.
         """
         amenity = self.amenity_repo.get(amenity_id)
+
+        if not amenity:
+            raise ValueError(f"Amenity with id {amenity_id} not found.")
+
+        new_amenity = Amenity(
+            name=new_data["name"]
+            )
+
+        if not new_amenity.is_valid():
+            raise ValueError("Amenity validation failed. Please check the email and other attributes.")
 
         if amenity:
             self.amenity_repo.update(amenity_id, new_data)

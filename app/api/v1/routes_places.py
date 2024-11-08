@@ -105,6 +105,7 @@ class PlaceList(Resource):
 
         try:
             places = facade.place_facade.get_all_places()
+
             if not places:
                 raise ValueError(f"No place found")
 
@@ -160,8 +161,7 @@ class PlaceResource(Resource):
         updated_data = request.get_json()
 
         try:
-            updated_place = facade.place_facade.update_place(
-                place_id, updated_data)
+            updated_place = facade.place_facade.update_place(place_id, updated_data)
 
             return updated_place, 200
 
@@ -180,14 +180,14 @@ class PlaceResource(Resource):
             Success message if deletion is successful.
         """
         repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+
         if repo_type == 'in_DB':
             facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
         else:
             facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
 
         try:
-            facade_relation_manager.delete_place_and_associated_instances(
-                place_id)
+            facade_relation_manager.delete_place_and_associated_instances(place_id)
 
             return {"message": f"Place: {place_id} has been deleted"}, 200
 
@@ -215,6 +215,7 @@ class PlaceUserOwnerDetails(Resource):
         """
         facade = current_app.extensions['HBNB_FACADE']
         repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+
         if repo_type == 'in_DB':
             facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
         else:
@@ -223,11 +224,9 @@ class PlaceUserOwnerDetails(Resource):
         try:
             place = facade.place_facade.get_place(place_id)
             user_id = place.get("owner_id")
-            facade_relation_manager.delete_place_from_owner_place_list(
-                place_id, user_id)
+            facade_relation_manager.delete_place_from_owner_place_list(place_id, user_id)
 
-            return (
-                f"Place: {place_id} has been deleted from user_place_list and place repo")
+            return (f"Place: {place_id} has been deleted from user_place_list and place repo")
 
         except ValueError as e:
             abort(400, str(e))
@@ -253,6 +252,7 @@ class AmenityPlaceList(Resource):
             JSON representation of the newly added amenity.
         """
         repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+
         if repo_type == 'in_DB':
             facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
         else:
@@ -260,8 +260,7 @@ class AmenityPlaceList(Resource):
 
         try:
             amenity_data = request.get_json()
-            amenities = facade_relation_manager.add_amenity_to_a_place(
-                place_id, amenity_data)
+            amenities = facade_relation_manager.add_amenity_to_a_place(place_id, amenity_data)
 
             return amenities, 201
 
@@ -283,8 +282,8 @@ class AmenityPlaceList(Resource):
         facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
 
         try:
-            amenities = facade_relation_manager.get_all_amenities_names_from_place(
-                place_id)
+            amenities = facade_relation_manager.get_all_amenities_names_from_place(place_id)
+
             amenities_response = {
                 "place_id": place_id,
                 "place_amenities": amenities
@@ -315,6 +314,7 @@ class AmenityPlaceDelete(Resource):
         """
         facade = current_app.extensions['HBNB_FACADE']
         repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+
         if repo_type == 'in_DB':
             facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
         else:
@@ -365,6 +365,7 @@ class ReviewPlaceUser(Resource):
             JSON representation of the newly added review.
         """
         repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+
         if repo_type == 'in_DB':
             facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
         else:
@@ -373,8 +374,7 @@ class ReviewPlaceUser(Resource):
         new_review = request.get_json()
 
         try:
-            review = facade_relation_manager.create_review_for_place(
-                place_id, user_id, new_review)
+            review = facade_relation_manager.create_review_for_place(place_id, user_id, new_review)
 
             return review, 201
 
@@ -405,8 +405,8 @@ class ReviewPlaceList(Resource):
         facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
 
         try:
-            reviews_list = facade_relation_manager.get_all_reviews_dict_from_place_reviews_id_list(
-                place_id)
+            reviews_list = facade_relation_manager.get_all_reviews_dict_from_place_reviews_id_list(place_id)
+
             reviews_response = {
                 "reviews": reviews_list
             }
@@ -438,17 +438,16 @@ class AmenityReviewDelete(Resource):
             Success message indicating the review was removed from the place.
         """
         repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+
         if repo_type == 'in_DB':
             facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
         else:
             facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
 
         try:
-            facade_relation_manager.delete_review_from_place_list(
-                review_id, place_id)
+            facade_relation_manager.delete_review_from_place_list(review_id, place_id)
 
-            return {
-                "message": f"Review: {review_id} has been deleted from the place_reviews list"}, 200
+            return {"message": f"Review: {review_id} has been deleted from the place_reviews list"}, 200
 
         except ValueError as e:
             abort(400, str(e))
@@ -476,8 +475,7 @@ class PlaceAmenityName(Resource):
         facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
 
         try:
-            amenities = facade_relation_manager.get_all_places_with_specifique_amenity(
-                amenity_name)
+            amenities = facade_relation_manager.get_all_places_with_specifique_amenity(amenity_name)
 
             return amenities, 200
 

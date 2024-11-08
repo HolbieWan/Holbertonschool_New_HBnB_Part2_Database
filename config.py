@@ -5,7 +5,7 @@ class Config:
     """Base configuration with default settings."""
     SECRET_KEY = os.getenv('SECRET_KEY', 'default_secret_key')
     DEBUG = False
-    REPO_TYPE = os.getenv('REPO_TYPE', 'in_file')
+    REPO_TYPE = os.getenv('REPO_TYPE', 'in_memory')
 
 
 class DevelopmentConfig(Config):

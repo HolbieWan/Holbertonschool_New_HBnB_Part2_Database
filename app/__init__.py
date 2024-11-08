@@ -33,8 +33,7 @@ from app.services.facade_place import PlaceFacade
 from app.services.facade_amenity import AmenityFacade
 from app.services.facade_review import ReviewFacade
 from app.services.facade_relations_manager import FacadeRelationManager
-from app.services.sqlalchemy_facade_relation_manager \
-    import SQLAlchemyFacadeRelationManager
+from app.services.sqlalchemy_facade_relation_manager import SQLAlchemyFacadeRelationManager
 from app.persistence.repo_selector import RepoSelector
 
 
@@ -51,8 +50,7 @@ def create_app(config_name='default'):
     """
     app = Flask(__name__)
     app.config.from_object(config[config_name])
-    api = Api(app, version='1.0', title='HBnB API',
-              description='HBnB Application API')
+    api = Api(app, version='1.0', title='HBnB API', description='HBnB Application API')
     bcrypt.init_app(app)
     jwt.init_app(app)
     db.init_app(app)
@@ -84,22 +82,14 @@ def create_app(config_name='default'):
     amenity_facade = AmenityFacade(amenity_repo)
 
     # Initialize Facade with existing facades
-    hbnb_facade = HBnBFacade(
-        user_facade,
-        place_facade,
-        amenity_facade,
-        review_facade)
-    facade_relation_manager = FacadeRelationManager(
-        user_facade, place_facade, amenity_facade, review_facade)
-    sqlalchemy_facade_relation_manager = SQLAlchemyFacadeRelationManager(
-        user_facade, place_facade, amenity_facade, review_facade)
+    hbnb_facade = HBnBFacade(user_facade, place_facade, amenity_facade, review_facade)
+    facade_relation_manager = FacadeRelationManager(user_facade, place_facade, amenity_facade, review_facade)
+    sqlalchemy_facade_relation_manager = SQLAlchemyFacadeRelationManager(user_facade, place_facade, amenity_facade, review_facade)
 
     # Store hbnb_facade and other facades in app.extensions
     app.extensions['HBNB_FACADE'] = hbnb_facade
     app.extensions['FACADE_RELATION_MANAGER'] = facade_relation_manager
-    app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER'] = (
-        sqlalchemy_facade_relation_manager
-    )
+    app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER'] = (sqlalchemy_facade_relation_manager)
 
     # Register blueprints
     app.register_blueprint(users_bp)
@@ -114,5 +104,8 @@ def create_app(config_name='default'):
     api.add_namespace(amenities_ns, path='/api/v1/amenities')
     api.add_namespace(reviews_ns, path='/api/v1/reviews')
     api.add_namespace(login_ns, path='/api/v1/login')
+
+    print(f"Starting the app with config: {config_name}")
+    print(f"Starting the app with storage: {repo_type}")
 
     return app

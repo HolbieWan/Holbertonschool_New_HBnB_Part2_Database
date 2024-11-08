@@ -2,8 +2,7 @@
 RepoSelector module to select and initialize the appropriate repository type.
 """
 
-from app.persistence.repository \
-    import InMemoryRepository, InFileRepository, SQLAlchemyRepository
+from app.persistence.repository import InMemoryRepository, InFileRepository, SQLAlchemyRepository
 
 
 class RepoSelector:
@@ -50,11 +49,16 @@ class RepoSelector:
         """
         if self.repo_type == "in_file":
             return InFileRepository(self.file_name)
+        
         elif self.repo_type == "in_memory":
             return InMemoryRepository()
+        
         elif self.repo_type == "in_DB":
+            
             if model is None:
                 raise ValueError("Model is required for SQLAlchemyRepository")
+            
             return SQLAlchemyRepository(model)
+        
         else:
             raise ValueError(f"Unknown repository type: {self.repo_type}")

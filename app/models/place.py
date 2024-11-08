@@ -32,24 +32,11 @@ class Place(BaseModel):
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
     owner_first_name = db.Column(db.String(50), nullable=False)
-    owner_id = db.Column(
-        db.String(36),
-        db.ForeignKey('users.id'),
-        nullable=False)
+    owner_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
     reviews = db.Column(db.JSON, default=[])
     amenities = db.Column(db.JSON, default=[])
 
-    def __init__(
-            self,
-            title,
-            description,
-            price,
-            latitude,
-            longitude,
-            owner_id,
-            owner_first_name,
-            amenities=None,
-            reviews=None):
+    def __init__(self, title, description, price, latitude, longitude, owner_id, owner_first_name, amenities=None, reviews=None):
         """Initialize a new Place instance."""
         super().__init__()
         self.title = title
@@ -88,23 +75,25 @@ class Place(BaseModel):
             bool: True if all validations pass; raises ValueError otherwise.
         """
         try:
-            if not all(isinstance(attr, str)
-                       for attr in [self.title, self.description]):
+            if not all(isinstance(attr, str) for attr in [self.title, self.description, self.owner_first_name, self.owner_id]):
                 raise TypeError("title and description must be strings (str).")
 
             if self.price < 0:
-                raise ValueError("price must be a positiv value")
+                raise ValueError("price must be a positive value")
 
-            if len(self.title) > 100:
-                raise ValueError("title must be less than 100 characters.")
+            if not (0 < len(self.title) < 100):
+                raise ValueError("title must not be empty and be less than 100 characters.")
+            
+            if not (0 < len(self.description) < 500):
+                raise ValueError("Description must not be empty and be less than 500 characters.")
+            
+            if not (0 < len(self.owner_first_name) < 100):
+                raise ValueError("owner_first_name must not be empty and be less than 100 characters.")
+            
+            if not (0 < len(self.owner_id) < 100):
+                raise ValueError("owner_id must not be empty and be less than 100 characters.")
 
-            if not all(
-                isinstance(
-                    attr,
-                    float) for attr in [
-                    self.price,
-                    self.latitude,
-                    self.longitude]):
+            if not all(isinstance(attr, float) for attr in [self.price, self.latitude, self.longitude]):
                 raise TypeError(
                     "price, latitude, and longitude must be floats (float).")
 
@@ -114,15 +103,13 @@ class Place(BaseModel):
             if self.longitude > 180 or self.latitude < -180:
                 raise ValueError("Must be within the range of -90.0 to 90.0")
 
-            return True
-
         except TypeError as te:
-            print(f"Type error: {str(te)}")
-            return False
-
+            raise ValueError(f"{str(te)}")
+        
         except ValueError as ve:
-            print(f"Value error: {str(ve)}")
-            return False
+            raise ValueError(f"{str(ve)}")
+        
+        return True
 
     def to_dict(self):
         """

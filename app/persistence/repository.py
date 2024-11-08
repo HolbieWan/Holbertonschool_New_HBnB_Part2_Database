@@ -81,9 +81,7 @@ class InMemoryRepository(Repository):
 
     def get_by_attribute(self, attr_name, attr_value):
         """Retrieve objects by a specific attribute value."""
-        return [
-            obj for obj in self._storage.values() if getattr(
-                obj, attr_name) == attr_value]
+        return [obj for obj in self._storage.values() if getattr(obj, attr_name) == attr_value]
 
 # <--------------------------------------------------------->
 
@@ -93,18 +91,18 @@ class InFileRepository(InMemoryRepository):
 
     def __init__(self, file_name):
 
-        self.path = (
-            f"/root/Holbertonschool_New_HBnB_Part2_Database\
-            /app/data/{file_name}"
-        )
+        data_dir = "/root/Holbertonschool_New_HBnB_Part2_Database/app/data"
+        os.makedirs(data_dir, exist_ok=True)
+
+        self.path = os.path.join(data_dir, file_name)
+
         self._storage = {}
 
         if not os.path.exists(self.path):
             with open(self.path, "w") as data_file:
                 json.dump(self._storage, data_file)
-            print(f"The file {self.path} has been created")
+
         else:
-            print(f"The file {self.path} already exists")
             try:
                 with open(self.path, "r") as data_file:
                     data = json.load(data_file)
@@ -112,6 +110,7 @@ class InFileRepository(InMemoryRepository):
                         obj_id: self.dict_to_obj(obj_data)
                         for obj_id, obj_data in data.items()
                     }
+
             except (json.JSONDecodeError, ValueError):
                 print("The file is empty or corrupted")
 
@@ -121,11 +120,9 @@ class InFileRepository(InMemoryRepository):
         date fields.
         """
         if 'created_at' in obj_data:
-            obj_data['created_at'] = datetime.fromisoformat(
-                obj_data['created_at'])
+            obj_data['created_at'] = datetime.fromisoformat(obj_data['created_at'])
         if 'updated_at' in obj_data:
-            obj_data['updated_at'] = datetime.fromisoformat(
-                obj_data['updated_at'])
+            obj_data['updated_at'] = datetime.fromisoformat(obj_data['updated_at'])
 
         obj_type = obj_data.get('type')
 
@@ -193,8 +190,7 @@ class InFileRepository(InMemoryRepository):
     def save_to_file(self):
         """Persist data in storage to the JSON file."""
         with open(self.path, "w") as data_file:
-            json.dump({obj_id: obj.to_dict() for obj_id,
-                      obj in self._storage.items()}, data_file, indent=4)
+            json.dump({obj_id: obj.to_dict() for obj_id, obj in self._storage.items()}, data_file, indent=4)
         print("Data has been saved")
 
     def add(self, obj):

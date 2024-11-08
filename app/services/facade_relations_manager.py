@@ -93,9 +93,11 @@ class FacadeRelationManager:
             raise ValueError(f"User with id: {user_id} not found")
 
         places = user.places
+
         if place_id in places:
             places.remove(place_id)
             self.user_facade.user_repo.update(user_id, user.to_dict())
+
         else:
             raise ValueError(
                 f"Place ID {place_id} not found in user's places list.")
@@ -121,18 +123,17 @@ class FacadeRelationManager:
                 raise ValueError(f"User with id: {user_id} not found")
 
             places_ids_list = user.places
+
             if places_ids_list:
                 for place_id in places_ids_list:
                     self.delete_place_and_associated_instances(place_id)
-
-            else:
-                raise ValueError(f"No corresponding place found for this user")
+            
+            self.user_facade.user_repo.delete(user_id)
 
         except ValueError as e:
             print(f"Une erreur est survenue : {str(e)}")
+            raise
 
-        finally:
-            self.user_facade.user_repo.delete(user_id)
 
         # <------------------------------------------>
 
@@ -148,7 +149,12 @@ class FacadeRelationManager:
         """
         try:
             place = self.place_facade.place_repo.get(place_id)
+
+            if not place:
+                raise ValueError(f"Place with id: {place_id} not found")
+            
             user_id = place.owner_id
+
             user = self.user_facade.user_repo.get(user_id)
 
             if not user:
@@ -159,23 +165,26 @@ class FacadeRelationManager:
             if place_id in user_places:
                 user_places.remove(place_id)
                 self.user_facade.user_repo.update(user_id, user.to_dict())
+
             else:
-                raise ValueError(
-                    f"Place ID {place_id} not found in user's places list.")
+                raise ValueError(f"Place ID {place_id} not found in user's places list.")
 
             reviews_ids_list = place.reviews
+
             if reviews_ids_list:
                 for review_id in reviews_ids_list:
                     self.review_facade.review_repo.delete(review_id)
+
             else:
-                raise ValueError(
-                    f"No corresponding review found for this place.")
+                raise ValueError(f"No corresponding review found for this place.")
+            
+            self.place_facade.place_repo.delete(place_id)
+            print(f"Place with id: {place_id} has been successfully deleted")
 
         except ValueError as e:
             print(f"Une erreur est survenue : {str(e)}")
-
-        finally:
-            self.place_facade.place_repo.delete(place_id)
+            raise
+ 
 
 #  Place - Amenity relations
 # <------------------------------------------------------------------------>
@@ -196,26 +205,24 @@ class FacadeRelationManager:
         """
         place = self.place_facade.place_repo.get(place_id)
         amenity_name = amenity_data["name"]
-        amenity = self.amenity_facade.amenity_repo.get_by_attribute(
-            "name", amenity_name)
+        existing_amenity = self.amenity_facade.amenity_repo.get_by_attribute("name", amenity_name)
 
         if not place:
             raise ValueError(f"Place: {place_id} not found.")
+        
+        if amenity_name in place.amenities:
+            raise ValueError(f"Amenity: {amenity_data['name']} already exist for this place: {place_id}")
 
-        if not amenity_data["name"] in place.amenities:
-            place.amenities.append(amenity_data['name'])
-            self.place_facade.place_repo.update(place_id, place.to_dict())
-            print(
-                f"Amenity: {amenity_data['name']} has been added \
-                to the place: {place_id}")
-
-            if not amenity:
-                amenity = self.amenity_facade.create_amenity(amenity_data)
-
+        if not ( 0 < len(amenity_name) < 50):
+            raise ValueError(f"name must not be empty and less than 50 characters")
+        
         else:
-            raise ValueError(
-                f"Amenity: {amenity_data['name']} already exist \
-                for this place: {place_id}")
+            place.amenities.append(amenity_name)
+            self.place_facade.place_repo.update(place_id, place.to_dict())
+            print(f"Amenity: {amenity_name} has been added to the place: {place_id}")
+
+            if not existing_amenity:
+                amenity = self.amenity_facade.create_amenity(amenity_data)
 
         return amenity
 
@@ -284,9 +291,9 @@ class FacadeRelationManager:
         if amenity_name in amenities:
             amenities.remove(amenity_name)
             self.place_facade.place_repo.update(place_id, place.to_dict())
+
         else:
-            raise ValueError(
-                f"Amenity {amenity_name} not found in places_amenities list.")
+            raise ValueError(f"Amenity {amenity_name} not found in places_amenities list.")
 
         self.amenity_facade.amenity_repo.delete(amenity_name)
 
@@ -317,8 +324,7 @@ class FacadeRelationManager:
                 place_amenity_name_list.append(place)
 
         if not place_amenity_name_list:
-            raise ValueError(
-                f"No place found with the amenity: {amenity_name}")
+            raise ValueError(f"No place found with the amenity: {amenity_name}")
 
         return place_amenity_name_list
 
@@ -375,7 +381,6 @@ class FacadeRelationManager:
 
         for review_id in reviews_id_list:
             review = self.review_facade.review_repo.get(review_id)
-            # review_dict = review.to_dict()
             reviews_dict_list.append(review)
 
         if not reviews_dict_list:
@@ -418,6 +423,7 @@ class FacadeRelationManager:
         if review_id in reviews:
             reviews.remove(review_id)
             self.place_facade.place_repo.update(place_id, place.to_dict())
+            
         else:
             raise ValueError(f"Review with id: {review_id} not found")
 

@@ -51,21 +51,15 @@ class UserFacade():
         )
         new_user.hash_password(user_data["password"])
 
-        existing_user = self.user_repo.get_by_attribute(
-            "email", new_user.email)
+        existing_user = self.user_repo.get_by_attribute("email", new_user.email)
 
         if existing_user:
-            raise ValueError(
-                f"User with email: {new_user.email} already exists.")
+            raise ValueError(f"User with email: {new_user.email} already exists.")
 
         if not new_user.is_valid():
-            raise ValueError(
-                "User validation failed. Please check the email "
-                "and other attributes.")
+            raise ValueError("User validation failed. Please check the email and other attributes.")
 
-        print(
-            f"User {new_user.first_name} {new_user.last_name} "
-            "passed validation.")
+        print(f"User {new_user.first_name} {new_user.last_name} passed validation.")
 
         self.user_repo.add(new_user)
 
@@ -90,6 +84,7 @@ class UserFacade():
 
         if user:
             return user.to_dict()
+        
         else:
             raise ValueError(f"User with id {user_id} not found.")
 
@@ -145,6 +140,27 @@ class UserFacade():
             ValueError: If the user is not found.
         """
         user = self.user_repo.get(user_id)
+
+        if not user:
+            raise ValueError(f"User with id {user_id} not found.")
+        
+        new_email = new_data["email"]
+
+        existing_user = self.user_repo.get_by_attribute("email", new_email)
+
+        if existing_user and new_email != user.email:
+            raise ValueError(f"User with email: {new_email} already exists, choose another email address.")
+
+        new_user = new_user = User(
+            first_name=new_data["first_name"],
+            last_name=new_data["last_name"],
+            email=new_data["email"],
+            password=user.password,
+            is_admin=user.is_admin
+        )
+
+        if not new_user.is_valid():
+            raise ValueError("User validation failed. Please check the email and other attributes.")
 
         if user:
             self.user_repo.update(user_id, new_data)
