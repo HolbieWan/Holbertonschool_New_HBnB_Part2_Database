@@ -34,6 +34,7 @@ Attributes:
 
 from flask import Blueprint, current_app, request, abort
 from flask_restx import api, Namespace, Resource, fields
+from flask_jwt_extended import jwt_required, get_jwt_identity # type: ignore
 
 from app.api.v1.routes_reviews import review_model
 from app.api.v1.routes_amenities import amenity_model, amenity_creation_model
@@ -87,6 +88,13 @@ get_all_reviews_success_model = api.model('GetAllReviews', {
     })), required=False, description='List of reviews for the place', example=[{}]),
 })
 
+auth_header = {'Authorization': {
+        'description': 'Bearer <JWT Token>',
+        'in': 'header',
+        'type': 'string',
+        'required': True
+    }
+}
 
 @api.route('/')
 class PlaceList(Resource):
@@ -101,9 +109,10 @@ class PlaceList(Resource):
         Returns:
             JSON array of all places, with place attributes.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-
         try:
+            facade = current_app.extensions['HBNB_FACADE']
+
+        
             places = facade.place_facade.get_all_places()
 
             if not places:
@@ -113,6 +122,9 @@ class PlaceList(Resource):
 
         except ValueError as e:
             abort(400, str(e))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
  #   <------------------------------------------------------------------------>
 
@@ -134,9 +146,9 @@ class PlaceResource(Resource):
         Returns:
             JSON object with the place's details.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-
         try:
+            facade = current_app.extensions['HBNB_FACADE']
+
             place = facade.place_facade.get_place(place_id)
 
             return place, 200
@@ -144,9 +156,13 @@ class PlaceResource(Resource):
         except ValueError as e:
             abort(404, str(e))
 
-    @api.doc('update_place')
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
+
+    @api.doc('update_place', params=auth_header)
     @api.expect(place_creation_model)
     @api.marshal_with(place_model)
+    @jwt_required()
     def put(self, place_id):
         """
         Updates an existing place.
@@ -157,10 +173,20 @@ class PlaceResource(Resource):
         Returns:
             JSON object with the updated place's details.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-        updated_data = request.get_json()
-
         try:
+            current_user = get_jwt_identity()
+            is_admin = current_user.get('is_admin', False)
+            facade = current_app.extensions['HBNB_FACADE']
+
+            updated_data = request.get_json()
+
+            place = facade.place_facade.get_place(place_id)
+            if not place:
+                raise ValueError('error: Place not found')
+
+            if not is_admin and place["owner_id"] != current_user["id"]:
+                raise ValueError('error: Unauthorized action, you must be the owner of the place to update it')
+
             updated_place = facade.place_facade.update_place(place_id, updated_data)
 
             return updated_place, 200
@@ -168,7 +194,11 @@ class PlaceResource(Resource):
         except ValueError as e:
             abort(400, str(e))
 
-    @api.doc('delete_place')
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
+
+    @api.doc('delete_place', params=auth_header)
+    @jwt_required()
     def delete(self, place_id):
         """
         Deletes a place and its associated instances.
@@ -179,20 +209,28 @@ class PlaceResource(Resource):
         Returns:
             Success message if deletion is successful.
         """
-        repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
-
-        if repo_type == 'in_DB':
-            facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
-        else:
-            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
-
         try:
+            current_user = get_jwt_identity()
+            is_admin = current_user.get('is_admin', False)
+            repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+
+            if repo_type == 'in_DB':
+                facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
+            else:
+                facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+
+            if not is_admin and place_id != current_user["id"]:
+                raise ValueError('error: Unauthorized action, you can only modify your own data')
+
             facade_relation_manager.delete_place_and_associated_instances(place_id)
 
-            return {"message": f"Place: {place_id} has been deleted"}, 200
+            return {f"Place: {place_id} has been deleted"}, 200
 
         except ValueError as e:
             abort(400, str(e))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
  #   <------------------------------------------------------------------------>
 
@@ -202,7 +240,8 @@ class PlaceResource(Resource):
 class PlaceUserOwnerDetails(Resource):
     """Resource for deleting a place from both the place repository and the associated user repository. """
 
-    @api.doc('delete_place_in_place_repo_and_user_repo')
+    @api.doc('delete_place_in_place_repo_and_user_repo', params=auth_header)
+    @jwt_required()
     def delete(self, place_id):
         """
         Deletes a place from both the place repository and the associated user.
@@ -213,15 +252,20 @@ class PlaceUserOwnerDetails(Resource):
         Returns:
             Success message indicating the place was removed from both repositories.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-        repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
-
-        if repo_type == 'in_DB':
-            facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
-        else:
-            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
-
         try:
+            current_user = get_jwt_identity()
+            is_admin = current_user.get('is_admin', False)
+            facade = current_app.extensions['HBNB_FACADE']
+            repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+
+            if repo_type == 'in_DB':
+                facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
+            else:
+                facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+
+            if not is_admin and place_id != current_user["id"]:
+                raise ValueError('error: Unauthorized action, you can only modify your own data')
+
             place = facade.place_facade.get_place(place_id)
             user_id = place.get("owner_id")
             facade_relation_manager.delete_place_from_owner_place_list(place_id, user_id)
@@ -231,6 +275,9 @@ class PlaceUserOwnerDetails(Resource):
         except ValueError as e:
             abort(400, str(e))
 
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
+
  #   <------------------------------------------------------------------------>
 
 @api.route('/<string:place_id>/amenities')
@@ -238,9 +285,10 @@ class PlaceUserOwnerDetails(Resource):
 class AmenityPlaceList(Resource):
     """Resource for managing amenities associated with a specific place."""
 
-    @api.doc('add_amenity_to_a_place')
+    @api.doc('add_amenity_to_a_place', params=auth_header)
     @api.expect(amenity_creation_model)
     @api.marshal_with(amenity_model)  # type: ignore
+    @jwt_required()
     def post(self, place_id):
         """
         Adds a new amenity to the specified place.
@@ -251,14 +299,22 @@ class AmenityPlaceList(Resource):
         Returns:
             JSON representation of the newly added amenity.
         """
-        repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
-
-        if repo_type == 'in_DB':
-            facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
-        else:
-            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
-
         try:
+            current_user = get_jwt_identity()
+            is_admin = current_user.get('is_admin', False)
+            facade = current_app.extensions['HBNB_FACADE']
+            repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+
+            if repo_type == 'in_DB':
+                facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
+            else:
+                facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+
+            place = facade.place_facade.get_place(place_id)
+
+            if not is_admin and place["owner_id"] != current_user["id"]:
+                raise ValueError('error: Unauthorized action, you can only modify your own data')
+
             amenity_data = request.get_json()
             amenities = facade_relation_manager.add_amenity_to_a_place(place_id, amenity_data)
 
@@ -266,6 +322,9 @@ class AmenityPlaceList(Resource):
 
         except ValueError as e:
             abort(400, str(e))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
     @api.doc('get_all_amenity_names_for_a_place')
     @api.marshal_with(get_amenities_model)  # type: ignore
@@ -279,9 +338,9 @@ class AmenityPlaceList(Resource):
         Returns:
             JSON object with a list of amenity names.
         """
-        facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
-
         try:
+            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+
             amenities = facade_relation_manager.get_all_amenities_names_from_place(place_id)
 
             amenities_response = {
@@ -294,13 +353,17 @@ class AmenityPlaceList(Resource):
         except ValueError as e:
             abort(400, str(e))
 
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
+
 
 @api.route('/<string:place_id>/amenities/<string:amenity_name>')
 @api.param('place_id', 'The place identifier')
 @api.param('amenity_name', 'The amenity name to delete')
 class AmenityPlaceDelete(Resource):
     """Resource for deleting a specific amenity from a place."""
-    @api.doc('get_all_amenity_names_for_a_place')
+    @api.doc('get_all_amenity_names_for_a_place', params=auth_header)
+    @jwt_required()
     def delete(self, place_id, amenity_name):
         """
         Deletes a specific amenity from a place.
@@ -312,34 +375,46 @@ class AmenityPlaceDelete(Resource):
         Returns:
             Success message indicating the amenity was removed from the place.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-        repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
-
-        if repo_type == 'in_DB':
-            facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
-        else:
-            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
-
         try:
+            current_user = get_jwt_identity()
+            is_admin = current_user.get('is_admin', False)
+            facade = current_app.extensions['HBNB_FACADE']
+            repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+
+            if repo_type == 'in_DB':
+                facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
+            else:
+                facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+
+            place = facade.place_facade.get_place(place_id)
+            if not place:
+                return {'error': 'Place not found'}, 404
+            
+            user_id = place["owner_id"]
+
+            if not is_admin and user_id != current_user["id"]:
+                raise ValueError('error: Unauthorized action, you can only update your own place')
+
             place = facade.place_facade.get_place(place_id)
 
         except ValueError as f:
             abort(400, str(f))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
         if amenity_name in place["amenities"]:
             try:
                 facade_relation_manager.delete_amenity_from_place_list(
                     amenity_name, place_id)
 
-                return {
-                    "message": f"Amenity: {amenity_name} has been deleted from the place_amenities list"}, 200
+                return {f"Amenity: {amenity_name} has been deleted from the place_amenities list"}, 200
 
             except ValueError as e:
                 abort(400, str(e))
 
         else:
-            return {
-                "message": f"Amenity: {amenity_name} not found in the place_amenities list"}, 400
+            return {"message": f"Amenity: {amenity_name} not found in the place_amenities list"}, 400
 
  #   <------------------------------------------------------------------------>
 
@@ -350,9 +425,10 @@ class AmenityPlaceDelete(Resource):
 class ReviewPlaceUser(Resource):
     """Resource for adding a review to a place by a specific user."""
 
-    @api.doc('add_review_to_a_place')
+    @api.doc('add_review_to_a_place', params=auth_header)
     @api.expect(add_review_model)
     @api.marshal_with(review_model)  # type: ignore
+    @jwt_required()
     def post(self, place_id, user_id):
         """
         Adds a review for a place by a specific user.
@@ -364,22 +440,44 @@ class ReviewPlaceUser(Resource):
         Returns:
             JSON representation of the newly added review.
         """
-        repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
-
-        if repo_type == 'in_DB':
-            facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
-        else:
-            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
-
-        new_review = request.get_json()
-
         try:
+            current_user = get_jwt_identity()
+            is_admin = current_user.get('is_admin', False)
+            facade = current_app.extensions['HBNB_FACADE']
+            repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+
+            if repo_type == 'in_DB':
+                facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
+            else:
+                facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+
+            place = facade.place_facade.get_place(place_id)
+            if not place:
+                return {'error': 'Place not found'}, 404
+
+            reviews = facade.review_facade.get_all_reviews()
+            for review in reviews:
+                if not is_admin and review["user_id"] == current_user["id"] and review["place_id"] == place_id:
+                    raise ValueError('error: Unauthorized action: You already reviewed this place.')
+
+            if not is_admin and place["owner_id"] == user_id:
+                raise ValueError('error: Unauthorized action, you can not review your own place')
+
+            if not is_admin and user_id != current_user["id"] :
+                raise ValueError('error: Unauthorized action, the user_id is incorect')
+            
+            new_review = request.get_json()
+
+        
             review = facade_relation_manager.create_review_for_place(place_id, user_id, new_review)
 
             return review, 201
 
         except ValueError as e:
             abort(400, str(e))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
  #   <------------------------------------------------------------------------>
 
@@ -402,9 +500,9 @@ class ReviewPlaceList(Resource):
         Returns:
             JSON object containing a list of reviews for the place.
         """
-        facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
-
         try:
+            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+
             reviews_list = facade_relation_manager.get_all_reviews_dict_from_place_reviews_id_list(place_id)
 
             reviews_response = {
@@ -415,6 +513,9 @@ class ReviewPlaceList(Resource):
 
         except ValueError as e:
             abort(400, str(e))
+        
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
  #   <------------------------------------------------------------------------>
 
@@ -425,7 +526,8 @@ class ReviewPlaceList(Resource):
 class AmenityReviewDelete(Resource):
     """Resource for deleting a specific review from a place."""
 
-    @api.doc('delete_a_review_from_a_place')
+    @api.doc('delete_a_review_from_a_place', params=auth_header)
+    @jwt_required()
     def delete(self, place_id, review_id):
         """
         Deletes a specific review from a place.
@@ -437,20 +539,35 @@ class AmenityReviewDelete(Resource):
         Returns:
             Success message indicating the review was removed from the place.
         """
-        repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
-
-        if repo_type == 'in_DB':
-            facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
-        else:
-            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
-
         try:
+            current_user = get_jwt_identity()
+            is_admin = current_user.get('is_admin', False)
+            facade = current_app.extensions['HBNB_FACADE']
+            repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+
+            if repo_type == 'in_DB':
+                facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
+            else:
+                facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+
+            place = facade.place_facade.get_place(place_id)
+            if not place:
+                raise ValueError('error: Place not found')
+            
+            user_id = place["owner_id"]
+
+            if not is_admin and user_id != current_user["id"]:
+                raise ValueError('error: Unauthorized action, you can only update your own place')
+
             facade_relation_manager.delete_review_from_place_list(review_id, place_id)
 
             return {"message": f"Review: {review_id} has been deleted from the place_reviews list"}, 200
 
         except ValueError as e:
             abort(400, str(e))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
  #   <------------------------------------------------------------------------>
 
@@ -472,14 +589,17 @@ class PlaceAmenityName(Resource):
         Returns:
             JSON array of places containing the specified amenity.
         """
-        facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
-
         try:
+            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+
             amenities = facade_relation_manager.get_all_places_with_specifique_amenity(amenity_name)
 
             return amenities, 200
 
         except ValueError as e:
             abort(400, str(e))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
  #   <------------------------------------------------------------------------>

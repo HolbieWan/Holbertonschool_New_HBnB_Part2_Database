@@ -19,6 +19,7 @@ Attributes:
 
 from flask import Blueprint, current_app, request, abort
 from flask_restx import api, Namespace, Resource, fields
+from flask_jwt_extended import jwt_required, get_jwt_identity # type: ignore
 
 amenities_bp = Blueprint('amenities', __name__)
 api = Namespace('amenities', description='Amenity operations')
@@ -34,6 +35,14 @@ amenity_model = api.model('Amenity', {
 amenity_creation_model = api.model('Amenity_creation', {'name': fields.String(
     required=True, description='Name of the amenity', example='Sauna'), })
 
+auth_header = {'Authorization': {
+        'description': 'Bearer <JWT Token>',
+        'in': 'header',
+        'type': 'string',
+        'required': True
+    }
+}
+
 #   <------------------------------------------------------------------------>
 
 
@@ -41,9 +50,10 @@ amenity_creation_model = api.model('Amenity_creation', {'name': fields.String(
 class AmenityList(Resource):
     """Resource for creating a new amenity and retrieving all amenities."""
 
-    @api.doc('create_amenity')
+    @api.doc('create_amenity', params=auth_header)
     @api.expect(amenity_creation_model)
     @api.marshal_with(amenity_model, code=201)  # type: ignore
+    @jwt_required()
     def post(self):
         """
         Creates a new amenity.
@@ -54,16 +64,23 @@ class AmenityList(Resource):
         Returns:
             JSON representation of the created amenity.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-        new_amenity = request.get_json()
-
         try:
+            current_user = get_jwt_identity()
+            if not current_user.get('is_admin'):
+                raise ValueError('error: Admin privileges required')
+            
+            facade = current_app.extensions['HBNB_FACADE']
+            new_amenity = request.get_json()
+
             amenity = facade.amenity_facade.create_amenity(new_amenity)
 
             return amenity, 201
 
         except ValueError as e:
             abort(400, str(e))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
     @api.doc('get_all_amenities')
     @api.marshal_with(amenity_model, code=201)  # type: ignore
@@ -74,15 +91,18 @@ class AmenityList(Resource):
         Returns:
             List of amenities in JSON format.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-
         try:
+            facade = current_app.extensions['HBNB_FACADE']
+
             amenities = facade.amenity_facade.get_all_amenities()
 
             return amenities
 
         except ValueError as e:
             abort(400, str(e))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
 #   <------------------------------------------------------------------------>
 
@@ -104,9 +124,9 @@ class Amenity(Resource):
         Returns:
             JSON representation of the amenity.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-
         try:
+            facade = current_app.extensions['HBNB_FACADE']
+
             amenity = facade.amenity_facade.get_amenity(amenity_id)
 
             return amenity, 200
@@ -114,9 +134,13 @@ class Amenity(Resource):
         except ValueError as e:
             abort(404, str(e))
 
-    @api.doc('update_amenity')
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
+
+    @api.doc('update_amenity', params=auth_header)
     @api.expect(amenity_creation_model)
     @api.marshal_with(amenity_model)  # type: ignore
+    @jwt_required()
     def put(self, amenity_id):
         """
         Updates an existing amenity.
@@ -127,10 +151,14 @@ class Amenity(Resource):
         Returns:
             JSON representation of the updated amenity.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-        updated_data = request.get_json()
-
         try:
+            current_user = get_jwt_identity()
+            if not current_user.get('is_admin'):
+                raise ValueError('error: Admin privileges required')
+            
+            facade = current_app.extensions['HBNB_FACADE']
+            updated_data = request.get_json()
+
             updated_amenity = facade.amenity_facade.update_amenity(
                 amenity_id, updated_data)
 
@@ -139,7 +167,12 @@ class Amenity(Resource):
         except ValueError as e:
             abort(404, str(e))
 
-    @api.doc('delete_amenity')
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
+
+
+    @api.doc('delete_amenity', params=auth_header)
+    @jwt_required()
     def delete(self, amenity_id):
         """
         Deletes an amenity by its unique identifier.
@@ -150,12 +183,19 @@ class Amenity(Resource):
         Returns:
             Message confirming successful deletion.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-
         try:
+            current_user = get_jwt_identity()
+            if not current_user.get('is_admin'):
+                raise ValueError('error: Admin privileges required')
+            
+            facade = current_app.extensions['HBNB_FACADE']
+
             facade.amenity_facade.delete_amenity(amenity_id)
 
             return (f"Amenity: {amenity_id} has been deleted."), 200
 
         except ValueError as e:
             abort(404, str(e))
+        
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500

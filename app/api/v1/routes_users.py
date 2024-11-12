@@ -38,6 +38,7 @@ from email_validator import EmailNotValidError
 
 from app.api.v1.routes_places import place_model, place_creation_model
 from app.api.v1.routes_reviews import review_model
+from app.extensions import bcrypt
 
 
 users_bp = Blueprint('users', __name__)
@@ -68,6 +69,7 @@ user_update_model = api.model('User_update', {
     'first_name': fields.String(required=True, description='First name', example='Johnny'),
     'last_name': fields.String(required=True, description='Last name', example='Rocker'),
     'email': fields.String(required=True, description='Email address', example='johnny.rocker@gmail.com'),
+    'password': fields.String(required=False, description='Password', example='mypassword')
 })
 
 get_all_places_success_model = api.model('GetAllPlaces', {
@@ -119,9 +121,10 @@ class Home(Resource):
 class UserList(Resource):
     """Resource for creating a new user and listing all users."""
 
-    @api.doc('create_user')
+    @api.doc('create_user', params=auth_header)
     @api.expect(user_creation_model)
     @api.marshal_with(user_model, code=201) # type: ignore
+    @jwt_required()
     def post(self):
         """
         Creates a new user.
@@ -132,10 +135,14 @@ class UserList(Resource):
         Returns:
             JSON representation of the created user with password masked.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-        user_data = request.get_json()
-
         try:
+            current_user = get_jwt_identity()
+            if not current_user.get('is_admin'):
+                return {'error': 'Admin privileges required'}, 403
+            
+            facade = current_app.extensions['HBNB_FACADE']
+            user_data = request.get_json()
+
             new_user = facade.user_facade.create_user(user_data)
             new_user["password"] = "****"
 
@@ -143,6 +150,9 @@ class UserList(Resource):
 
         except ValueError as e:
             abort(400, str(e))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
     
 
     @api.doc('list_users')
@@ -154,9 +164,9 @@ class UserList(Resource):
         Returns:
             List of user dictionaries with masked passwords.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-
         try:
+            facade = current_app.extensions['HBNB_FACADE']
+
             users = facade.user_facade.get_all_users()
 
             if not users:
@@ -169,6 +179,9 @@ class UserList(Resource):
 
         except ValueError as e:
             abort(400, str(e))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
  #   <------------------------------------------------------------------------>
 
@@ -189,9 +202,9 @@ class UserResource(Resource):
         Returns:
             JSON representation of the user with password masked.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-
         try:
+            facade = current_app.extensions['HBNB_FACADE']
+
             user = facade.user_facade.get_user(user_id)
             user["password"] = "****"
 
@@ -200,10 +213,14 @@ class UserResource(Resource):
         except ValueError as e:
             abort(400, str(e))
 
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
-    @api.doc('update_user')
+
+    @api.doc('update_user', params=auth_header)
     @api.expect(user_update_model)
     @api.marshal_with(user_model)
+    @jwt_required()
     def put(self, user_id):
         """
         Updates an existing user.
@@ -214,10 +231,27 @@ class UserResource(Resource):
         Returns:
             JSON representation of the updated user with masked password.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-        updated_data = request.get_json()
-
         try:
+            current_user = get_jwt_identity()
+            is_admin = current_user.get('is_admin', False)
+            facade = current_app.extensions['HBNB_FACADE']
+
+            user = facade.user_facade.get_user(user_id)
+            if not user:
+                raise ValueError('error: User not found')
+
+            if not is_admin and user["id"] != current_user["id"]:
+                raise ValueError(f'error: Unauthorized action, you can only modify your own data')
+
+            updated_data = request.get_json()
+
+            new_password = updated_data["password"]
+            new_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
+            updated_data["password"] = new_password
+
+            if not is_admin:
+                updated_data["password"] = user["password"]
+
             updated_user = facade.user_facade.update_user(user_id, updated_data)
             updated_user["password"] = "****"
 
@@ -225,6 +259,9 @@ class UserResource(Resource):
         
         except ValueError as e:
             abort(400, str(e))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
 
     # @api.doc('delete_user')
@@ -240,7 +277,8 @@ class UserResource(Resource):
     #         abort(400, str(e))
 
 
-    @api.doc('delete_user')
+    @api.doc('delete_user', params=auth_header)
+    @jwt_required()
     def delete(self, user_id):
         """
         Deletes a user along with all associated instances.
@@ -251,19 +289,27 @@ class UserResource(Resource):
         Returns:
             Success message if deletion is successful.
         """
-        repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
-
-        if repo_type == 'in_DB':
-            facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
-        else:
-            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
-
         try:
+            repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+            current_user = get_jwt_identity()
+            is_admin = current_user.get('is_admin', False)
+
+            if repo_type == 'in_DB':
+                facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
+            else:
+                facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+
+            if not is_admin and user_id != current_user["id"]:
+                raise ValueError('error: Unauthorized action, you can only modify your own data')
+        
             facade_relation_manager.delete_user_and_associated_instances(user_id)
             return {"message": f"User: {user_id} has been deleted"}, 200
         
         except ValueError as e:
             abort(400, str(e))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
  #   <------------------------------------------------------------------------>
 
@@ -272,9 +318,10 @@ class UserResource(Resource):
 class UserPlaceDetails(Resource):
     """Resource for creating a place for a user or retrieving places by user."""
     
-    @api.doc('create_place')
+    @api.doc('create_place', params=auth_header)
     @api.expect(place_creation_model)
     @api.marshal_with(place_model, code=201) # type: ignore
+    @jwt_required()
     def post(self, user_id):
         """
         Creates a new place associated with a user.
@@ -285,25 +332,33 @@ class UserPlaceDetails(Resource):
         Returns:
             JSON representation of the created place.
         """
-        repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
-
-        if repo_type == 'in_DB':
-            facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
-        else:
-            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
-
-        new_place_data = request.get_json()
-
-        new_place_data["amenities"] = []
-        new_place_data["reviews"] = []
-
         try:
+            current_user = get_jwt_identity()
+            repo_type = current_app.config.get('REPO_TYPE', 'in_memory')
+
+            if repo_type == 'in_DB':
+                facade_relation_manager = current_app.extensions['SQLALCHEMY_FACADE_RELATION_MANAGER']
+            else:
+                facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+
+        
+            new_place_data = request.get_json()
+
+            if user_id != current_user["id"]:
+                raise ValueError('error: Unauthorized action, can only create place if you are the owner')
+
+            new_place_data["amenities"] = []
+            new_place_data["reviews"] = []
+
             place = facade_relation_manager.create_place_for_user(user_id, new_place_data)
 
             return place, 201
 
         except ValueError as e:
             abort(400, str(e))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
 
     @api.doc('get_places_by_user_id')
@@ -318,19 +373,22 @@ class UserPlaceDetails(Resource):
         Returns:
             List of places associated with the user.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-
         try:
+            facade = current_app.extensions['HBNB_FACADE']
+
             places = facade.place_facade.get_all_places_from_owner_id(user_id)
 
             places_response = {
                 "places": places
             }
 
+            return places_response, 200
+
         except ValueError as e:
             abort(400, str(e))
         
-        return places_response, 200
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
     
  #   <------------------------------------------------------------------------>
 
@@ -350,12 +408,15 @@ class UserReviewDetails(Resource):
         Returns:
             List of reviews for the specified user.
         """
-        facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
-
         try:
+            facade_relation_manager = current_app.extensions['FACADE_RELATION_MANAGER']
+
             reviews = facade_relation_manager.get_all_reviews_from_user(user_id)
             
             return reviews, 201
 
         except ValueError as e:
             abort(400, str(e))
+        
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500

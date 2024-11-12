@@ -34,7 +34,7 @@ login_model = api.model('Login', {
 })
 
 
-@api.route('/login')
+@api.route('/')
 class Login(Resource):
     """Resource for authenticating users and generating a JWT token for authorization."""
 

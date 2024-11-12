@@ -20,6 +20,7 @@ Attributes:
 
 from flask import jsonify, abort, request, Blueprint, current_app
 from flask_restx import api, Namespace, Resource, fields
+from flask_jwt_extended import jwt_required, get_jwt_identity # type: ignore
 
 reviews_bp = Blueprint('reviews', __name__)
 api = Namespace('reviews', description='Reviews operations')
@@ -51,14 +52,22 @@ review_update_model = api.model('Review_update', {
     'rating': fields.Integer(required=True, description='Rating from the user for this place', example='4')
 })
 
+auth_header = {'Authorization': {
+        'description': 'Bearer <JWT Token>',
+        'in': 'header',
+        'type': 'string',
+        'required': True
+    }
+}
 
 @api.route('/')
 class ReviewList(Resource):
     """Resource for creating and listing all reviews."""
     
-    @api.doc('create_review')
+    @api.doc('create_review', params=auth_header)
     @api.expect(review_creation_model)
     @api.marshal_with(review_model, code=201)  # type: ignore
+    @jwt_required()
     def post(self):
         """
         Creates a new review.
@@ -69,16 +78,32 @@ class ReviewList(Resource):
         Returns:
             JSON representation of the created review.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-        new_review_data = request.get_json()
-
         try:
+            current_user = get_jwt_identity()
+            
+            facade = current_app.extensions['HBNB_FACADE']
+            new_review_data = request.get_json()
+
+            if new_review_data["user_id"] != current_user["id"]:
+                raise ValueError('error: Unauthorized action')
+            
+            place_id = new_review_data["place_id"]
+            place = facade.place_facade.get_place(place_id)
+            if not place:
+                raise ValueError('error: Place not found')
+            
+            if place["owner_id"] == current_user["id"]:
+                raise ValueError('error: Unauthorized action: You cannot review your own place.')
+
             review = facade.review_facade.create_review(new_review_data)
 
             return review, 201
 
         except ValueError as e:
             abort(400, str(e))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
     @api.doc('get_all_reviews')
     @api.marshal_with(review_model, code=201)  # type: ignore
@@ -89,9 +114,9 @@ class ReviewList(Resource):
         Returns:
             List of reviews.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-
         try:
+            facade = current_app.extensions['HBNB_FACADE']
+
             reviews = facade.review_facade.get_all_reviews()
 
             if not reviews:
@@ -101,6 +126,9 @@ class ReviewList(Resource):
 
         except ValueError as e:
             abort(400, str(e))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
 
     #   <------------------------------------------------------------------------>
 
@@ -122,19 +150,25 @@ class ReviewResource(Resource):
         Returns:
             JSON representation of the review.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-
         try:
+            facade = current_app.extensions['HBNB_FACADE']
+
             review = facade.review_facade.get_review(review_id)
+            if not review:
+                raise ValueError("Review not found")
 
             return review, 200
 
         except ValueError as e:
             abort(400, str(e))
 
-    @api.doc('update_review')
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
+
+    @api.doc('update_review', params=auth_header)
     @api.expect(review_update_model)
     @api.marshal_with(review_model)
+    @jwt_required()
     def put(self, review_id):
         """
         Updates an existing review.
@@ -145,10 +179,21 @@ class ReviewResource(Resource):
         Returns:
             JSON representation of the updated review.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-        new_data = request.get_json()
-
         try:
+            current_user = get_jwt_identity()
+            is_admin = current_user.get('is_admin', False)
+            facade = current_app.extensions['HBNB_FACADE']
+            new_data = request.get_json()
+
+            review = facade.review_facade.get_review(review_id)
+            if not review:
+                raise ValueError('error: Review not found')
+            
+            user_id = review["user_id"]
+
+            if not is_admin and user_id != current_user["id"]:
+                raise ValueError('error: Unauthorized action, you can only update your own reviews')
+
             review = facade.review_facade.update_review(review_id, new_data)
 
             return review, 201
@@ -156,7 +201,11 @@ class ReviewResource(Resource):
         except ValueError as e:
             abort(400, str(e))
 
-    @api.doc('delete_review')
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
+
+    @api.doc('delete_review', params=auth_header)
+    @jwt_required()
     def delete(self, review_id):
         """
         Deletes a review by its unique identifier.
@@ -167,12 +216,24 @@ class ReviewResource(Resource):
         Returns:
             Success message upon deletion.
         """
-        facade = current_app.extensions['HBNB_FACADE']
-
         try:
+            current_user = get_jwt_identity()
+            is_admin = current_user.get('is_admin', False)
+            facade = current_app.extensions['HBNB_FACADE']
+
+            review = facade.review_facade.get_review(review_id)
+            if not review:
+                raise ValueError('error: Review not found')
+            
+            if not is_admin and review["user_id"] != current_user["id"]:
+                raise ValueError('error: Unauthorized action, you can only delete your own reviews')
+
             facade.review_facade.delete_review(review_id)
 
             return (f"Review: {review_id} has been deleted.")
 
         except ValueError as e:
             abort(400, str(e))
+
+        except Exception as e:
+            return {'error': 'An unexpected error occurred', 'details': str(e)}, 500
